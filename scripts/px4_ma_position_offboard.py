@@ -165,8 +165,8 @@ class OffboardMission(Node):
         for i in range(self.n_drone):
             self.attack_vector.append(np.array([0,0,0], dtype=np.float64))
 
-        self.attack_vector[4]   =   self.formation[3,:]-self.formation[4,:]
-        self.attack_vector[2]   =   3*self.formation[2,:]
+        # self.attack_vector[4]   =   self.formation[3,:]-self.formation[4,:]
+        self.attack_vector[2]   =   0.7*self.formation[2,:]
 
         self.attack_duration    =   np.float64(10.0)
         self.attack_timer       =   np.float64(0.0)
@@ -214,22 +214,10 @@ class OffboardMission(Node):
 
     def publish_virleader_pos(self):
 
-        proj_vir_pos    =   np.array([0.0,0.0,0.0], dtype=np.float64)
-        
-        for id in range(self.n_drone):
-            proj_vir_pos    =   proj_vir_pos+(self.local_pos_ned_list[id]-self.formation[id,:]+self.ned_spawn_offset[id]-self.attack_vector[id]*self.attack_timer)
-
-        proj_vir_pos        =   proj_vir_pos/self.n_drone
-
-        # print('error')
-        # print((proj_vir_pos+self.formation[2,:]-self.ned_spawn_offset[2]+self.attack_vector[id]*self.attack_timer-self.local_pos_ned_list[2]))
-        # print('proj vir pos')
-        # print(np.linalg.norm(self.vleader_set_pt_ned-proj_vir_pos))
-
         msg                     =   PointStamped()
-        msg.point.x             =   proj_vir_pos[0] # self.vleader_set_pt_ned[0]
-        msg.point.y             =   proj_vir_pos[1] # self.vleader_set_pt_ned[1]
-        msg.point.z             =   proj_vir_pos[2] # self.vleader_set_pt_ned[2]
+        msg.point.x             =   self.vleader_set_pt_ned[0]
+        msg.point.y             =   self.vleader_set_pt_ned[1]
+        msg.point.z             =   self.vleader_set_pt_ned[2]
         self.element_publisher[0]['vleader_pos_pub'].publish(msg)
 
     def publish_formation(self):
@@ -342,6 +330,11 @@ class OffboardMission(Node):
                 if self.entry_execute[idx] is False:
                     self.entry_execute[idx]     =   True
 
+            print('error of the agent 2')
+            print(self.trajectory_set_pt[2]-self.vleader_set_pt_ned-self.formation[2,:]+self.ned_spawn_offset[2])
+            print('true error of agent2')
+            print(self.attack_vector[2]*self.attack_timer)
+
             if self.wpt_idx >= 2:
                 self.publish_virleader_pos()
                 self.publish_formation()
@@ -349,8 +342,8 @@ class OffboardMission(Node):
                 self.publish_adjacency()
 
             # c2 link hijack attack
-            if self.wpt_idx == 6:
-                self.attack_timer   =   0*np.clip(self.attack_timer+self.timer_period/self.attack_duration,0,1)
+            if self.wpt_idx >= 3 and self.wpt_idx < 11:
+                self.attack_timer   =   np.clip(self.attack_timer+self.timer_period/self.attack_duration,0,1)
                 print('C2 Link Hijacking')
 
             else:
@@ -400,7 +393,7 @@ def main():
     # parser.add_argument('-n', type=int)
     # args = parser.parse_args()
 
-    n_drone     =   6
+    n_drone     =   7
     ref_lla     =   np.array([24.484043629238872, 54.36068616768677, 0], dtype=np.float64)    # (lat,lon,alt) -> (deg,deg,m)
     wpts        =   np.array([[24.484043629238872,54.36068616768677,40],
                               [24.484326113268185,54.360644616972564,40],
@@ -414,19 +407,35 @@ def main():
     wpts        =   np.insert(wpts,8,np.flipud(np.copy(wpts)),axis=0)
     wpts        =   np.delete(wpts,8,0)
 
-    formation   =   np.array([[3.0*np.cos(np.pi/180*0),3.0*np.sin(np.pi/180*0),0],
-                              [3.0*np.cos(np.pi/180*60),3.0*np.sin(np.pi/180*60),0],
-                              [3.0*np.cos(np.pi/180*120),3.0*np.sin(np.pi/180*120),0],
-                              [3.0*np.cos(np.pi/180*180),3.0*np.sin(np.pi/180*180),0],
-                              [3.0*np.cos(np.pi/180*240),3.0*np.sin(np.pi/180*240),0],
-                              [3.0*np.cos(np.pi/180*300),3.0*np.sin(np.pi/180*300),0]], dtype=np.float64)
+    # formation   =   np.array([[3.0*np.cos(np.pi/180*0),3.0*np.sin(np.pi/180*0),0],
+    #                           [3.0*np.cos(np.pi/180*60),3.0*np.sin(np.pi/180*60),0],
+    #                           [3.0*np.cos(np.pi/180*120),3.0*np.sin(np.pi/180*120),0],
+    #                           [3.0*np.cos(np.pi/180*180),3.0*np.sin(np.pi/180*180),0],
+    #                           [3.0*np.cos(np.pi/180*240),3.0*np.sin(np.pi/180*240),0],
+    #                           [3.0*np.cos(np.pi/180*300),3.0*np.sin(np.pi/180*300),0]], dtype=np.float64)
+
+    # formation   =   np.array([[4.0, 0.0, 2.0],
+    #                           [-4.0, 0.0, 1.0],
+    #                           [2.0, 2.0, -0.5],
+    #                           [2.0, -2.0, -0.5],
+    #                           [-2.0, -2.0, 0.5],
+    #                           [-2.0, 2.0, 0.5]], dtype=np.float64)
     
-    adjacency   =   np.array([[0.0, 1.0, 1.0, 1.0, 1.0, 1.0],
-                              [1.0, 0.0, 1.0, 1.0, 1.0, 1.0],
-                              [1.0, 1.0, 0.0, 1.0, 1.0, 1.0],
-                              [1.0, 1.0, 1.0, 0.0, 1.0, 1.0],
-                              [1.0, 1.0, 1.0, 1.0, 0.0, 1.0],
-                              [1.0, 1.0, 1.0, 1.0, 1.0, 0.0]], dtype=np.float64)
+    formation   =   np.array([[4.0*np.cos(np.pi/180*0),4.0*np.sin(np.pi/180*0),-2.0],
+                              [4.0*np.cos(np.pi/180*60),4.0*np.sin(np.pi/180*60),0.0],
+                              [4.0*np.cos(np.pi/180*120),4.0*np.sin(np.pi/180*120),-2.0],
+                              [4.0*np.cos(np.pi/180*180),4.0*np.sin(np.pi/180*180),0.0],
+                              [4.0*np.cos(np.pi/180*240),4.0*np.sin(np.pi/180*240),-2.0],
+                              [4.0*np.cos(np.pi/180*300),4.0*np.sin(np.pi/180*300),0.0],
+                              [0.0, 0.0, -1.0]], dtype=np.float64)
+
+    adjacency   =   np.array([[0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+                              [1.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+                              [1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0],
+                              [1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0],
+                              [1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0],
+                              [1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0],
+                              [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0]], dtype=np.float64)
 
     rclpy.init(args=None)
 
