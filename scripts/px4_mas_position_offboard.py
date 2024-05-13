@@ -91,22 +91,22 @@ class OffboardMission(Node):
             
             self.array_publishers[idx]['spawn_offset_pub']      =   self.create_publisher(
                 PointStamped,
-                f'{self.ns}/detector/in/spawn_offset',
+                f'{self.ns}/detector/spawn_offset',
                 qos_profile_pub)
             
         self.element_publisher[0]['vleader_pos_pub']        =    self.create_publisher(
             PointStamped,
-            '/px4_0/detector/in/vleader_position',
+            '/px4_0/detector/vleader_position',
             qos_profile_pub)
         
         self.element_publisher[0]['formation_pub']          =    self.create_publisher(
             Float32MultiArray,
-            '/px4_0/detector/in/formation_config',
+            '/px4_0/detector/formation_config',
             qos_profile_pub)
         
         self.element_publisher[0]['adjacency_pub']          =   self.create_publisher(
             Float32MultiArray,
-            '/px4_0/detector/in/adjacency',
+            '/px4_0/detector/adjacency',
             qos_profile_pub)
                    
         # parameters for callback
@@ -342,7 +342,7 @@ class OffboardMission(Node):
                 self.publish_adjacency()
 
             # c2 link hijack attack
-            if self.wpt_idx >= 3 and self.wpt_idx < 11:
+            if self.wpt_idx >= 4 and self.wpt_idx < 13:
                 self.attack_timer   =   np.clip(self.attack_timer+self.timer_period/self.attack_duration,0,1)
                 print('C2 Link Hijacking')
 
