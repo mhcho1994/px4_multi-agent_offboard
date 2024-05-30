@@ -125,6 +125,8 @@ class OffboardMission(Node):
         self.wpts_ned       =   navpy.lla2ned(self.wpts_lla[:,0], self.wpts_lla[:,1], self.wpts_lla[:,2],
                                               self.ref_lla[0], self.ref_lla[1], self.ref_lla[2],
                                               latlon_unit='deg', alt_unit='m', model='wgs84')
+        
+        print(self.wpts_ned)
 
         # parameters for formation flight
         self.wpt_idx                =   np.uint8(0)
@@ -165,10 +167,10 @@ class OffboardMission(Node):
         for i in range(self.n_drone):
             self.attack_vector.append(np.array([0,0,0], dtype=np.float64))
 
-        # self.attack_vector[4]   =   self.formation[3,:]-self.formation[4,:]
-        self.attack_vector[2]   =   0.7*self.formation[2,:]
+        self.attack_vector[4]   =   self.formation[3,:]-self.formation[4,:]
+        self.attack_vector[2]   =   0.4*self.formation[2,:]
 
-        self.attack_duration    =   np.float64(10.0)
+        self.attack_duration    =   np.float64(20.0)
         self.attack_timer       =   np.float64(0.0)
 
     # subscriber callback
@@ -213,7 +215,6 @@ class OffboardMission(Node):
         self.array_publishers[id]['trajectory_pub'].publish(msg)
 
     def publish_virleader_pos(self):
-
         msg                     =   PointStamped()
         msg.point.x             =   self.vleader_set_pt_ned[0]
         msg.point.y             =   self.vleader_set_pt_ned[1]
