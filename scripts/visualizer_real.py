@@ -110,7 +110,7 @@ class DroneRelativePoseVisualizer(Node):
                 self.tf_broadcaster.sendTransform(t)
   
 def main(args=None):
-    N_px4     =   2
+    N_px4     =   3
     rclpy.init(args=args)
     mdrone_visualizer = DroneRelativePoseVisualizer(N_px4)
     rclpy.spin(mdrone_visualizer)

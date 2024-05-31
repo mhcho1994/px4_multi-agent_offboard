@@ -6,10 +6,47 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 # find dependencies
+find_package(rclcpp REQUIRED)
 find_package(ament_cmake REQUIRED)
-# uncomment the following section in order to fill in
-# further dependencies manually.
-# find_package(<dependency> REQUIRED)
+find_package(rclpy REQUIRED)
+find_package(ament_cmake_python REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(px4_msgs REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
+find_package(builtin_interfaces REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_ros REQUIRED)
+
+# declare message files
+
+# generate the messages
+
+# export the message runtime dependency
+ament_export_dependencies(rosidl_default_runtime)
+
+# include cpp "include" directory
+include_directories(include)
+
+# create cpp executable
+
+# install cpp executables
+
+# install python executables
+install(PROGRAMS
+  scripts/mas_position_offboard_mxexp.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+# install python executables
+install(PROGRAMS
+  scripts/visualizer_real.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(DIRECTORY
+  launch
+  DESTINATION share/${PROJECT_NAME}/
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

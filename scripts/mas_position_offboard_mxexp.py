@@ -19,7 +19,7 @@ import navpy
 
 # crazyflie packages
 # enable for experiment
-# from qfly import Pose, QualisysCrazyflie, World, utils, ParallelContexts
+from qfly import Pose, QualisysCrazyflie, World, utils, ParallelContexts
 
 # messages
 from px4_msgs.msg import OffboardControlMode, TrajectorySetpoint, VehicleStatus, VehicleLocalPosition, VehicleGlobalPosition, VehicleCommand
@@ -69,17 +69,17 @@ class OffboardMission(Node):
                 self.n_cf   += 1
 
         # set crazyflies body names, comm address, marker ids, ips, world and array publisher
-        self.cf_body_names  =   ['cf1','cf2','cf3','cf4']           # [-] QTM (Qualysis track manager) rigid body name / ['cf1','cf2','cf3','cf4']
+        # self.cf_body_names  =   ['cf1','cf2','cf3','cf4']           # [-] QTM (Qualysis track manager) rigid body name / ['cf1','cf2','cf3','cf4']
 
-        self.cf_uris        =   ['radio://0/80/2M/E7E7E7E701',
-                                 'radio://0/80/2M/E7E7E7E702',
-                                 'radio://1/80/2M/E7E7E7E703',
-                                 'radio://1/80/2M/E7E7E7E704']      # [-] crazyflie address  
+        # self.cf_uris        =   ['radio://0/80/2M/E7E7E7E701',
+        #                          'radio://0/80/2M/E7E7E7E702',
+        #                          'radio://1/80/2M/E7E7E7E703',
+        #                          'radio://1/80/2M/E7E7E7E704']      # [-] crazyflie address  
         
-        self.cf_marker_ids  =   [[11, 12, 13, 14],
-                                 [21, 22, 23, 24],
-                                 [31, 32, 33, 34],
-                                 [41, 42, 43, 44]]                  # [-] active marker IDs
+        # self.cf_marker_ids  =   [[11, 12, 13, 14],
+        #                          [21, 22, 23, 24],
+        #                          [31, 32, 33, 34],
+        #                          [41, 42, 43, 44]]                  # [-] active marker IDs
         
         self.cf_body_names  =   ['cf1']                             # [-] QTM (Qualysis track manager) rigid body name / ['cf1','cf2','cf3','cf4']
 
@@ -88,12 +88,12 @@ class OffboardMission(Node):
         self.cf_marker_ids  =   [[11, 12, 13, 14]]                  # [-] active marker IDs
 
         # enable for experiment
-        # self.qtm_ip         =   '192.168.123.2'         # [-] ip setup
-        # self.world          =   World(expanse=3.0)      # [-] set up world - the world object comes with sane defaults
-        # self.array_qcfs_    =   [QualisysCrazyflie(cf_body_name,cf_uri,self.world,marker_ids = cf_marker_id,qtm_ip = self.qtm_ip) \
-        #                          for cf_body_name, cf_uri, cf_marker_id in zip(self.cf_body_names, self.cf_uris, self.cf_marker_ids)]    # [-] stack up context managers
-        # self.array_qcfs     =   ParallelContexts(*self.qcfs_)
-        # self.array_qcfs     =   self.array_qcfs.__enter__()
+        self.qtm_ip         =   '192.168.123.2'         # [-] ip setup
+        self.world          =   World(expanse=3.0)      # [-] set up world - the world object comes with sane defaults
+        self.qcfs_          =   [QualisysCrazyflie(cf_body_name,cf_uri,self.world,marker_ids = cf_marker_id,qtm_ip = self.qtm_ip) \
+                                 for cf_body_name, cf_uri, cf_marker_id in zip(self.cf_body_names, self.cf_uris, self.cf_marker_ids)]    # [-] stack up context managers
+        self.qcfs           =   ParallelContexts(*self.qcfs_)
+        self.qcfs           =   self.qcfs.__enter__()
 
         # define subscribers and publishers 
         # px4: all
@@ -222,8 +222,8 @@ class OffboardMission(Node):
         for i in range(self.n_drone):
             self.attack_vector.append(np.array([0,0,0], dtype=np.float64))
 
-        self.attack_vector[3]   =   0.5*(self.formation[1,:]-self.formation[3,:])
-        self.attack_vector[2]   =   -0.5*self.formation[2,:]
+        self.attack_vector[2]   =   0.5*(self.formation[0,:]-self.formation[2,:])
+        self.attack_vector[3]   =   -0.5*self.formation[3,:]
 
         self.attack_start       =   np.float64(10.0)
         self.attack_duration    =   np.float64(20.0)
@@ -305,7 +305,7 @@ class OffboardMission(Node):
 
             # entry:
             if all(not agent_entry for agent_entry in self.entry_execute):
-                self.vleader_set_pt_ned     =   np.array([0.0,0.0+0.5-0.5], dtype=np.float64)
+                self.vleader_set_pt_ned     =   np.array([0.0,0.0+0.5,-0.5], dtype=np.float64)
                 self.vleader_prev_wpt_ned   =   np.array([0.0,0.0+0.5,0.0], dtype=np.float64)
                 self.vleader_next_wpt_ned   =   np.array([0.0,0.0+0.5,-0.5], dtype=np.float64)
 
@@ -438,8 +438,13 @@ class OffboardMission(Node):
                 # cycle for crazyflies
                 for idx, qcf in enumerate(self.qcfs): 
                     qcf.safe_position_setpoint(Pose(self.trajectory_set_pt[idx+self.n_px4][1],self.trajectory_set_pt[idx+self.n_px4][0],-self.trajectory_set_pt[idx+self.n_px4][2]))
-                    qcf.set_led_ring(7)
-                    qcf.cf.param.set_value('ring.solidGreen', 200)
+                    
+                    if (idx == 0) and (self.attack_engage > 0):
+                        qcf.set_led_ring(7)
+                        qcf.cf.param.set_value('ring.solidRed', 200)
+                    else:
+                        qcf.set_led_ring(7)
+                        qcf.cf.param.set_value('ring.solidGreen', 200)
 
             else:
                 # land
