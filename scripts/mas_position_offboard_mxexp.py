@@ -81,11 +81,13 @@ class OffboardMission(Node):
         #                          [31, 32, 33, 34],
         #                          [41, 42, 43, 44]]                  # [-] active marker IDs
         
-        self.cf_body_names  =   ['cf1']                             # [-] QTM (Qualysis track manager) rigid body name / ['cf1','cf2','cf3','cf4']
+        self.cf_body_names  =   ['cf1','cf2']                             # [-] QTM (Qualysis track manager) rigid body name / ['cf1','cf2','cf3','cf4']
 
-        self.cf_uris        =   ['radio://0/80/2M/E7E7E7E701']      # [-] crazyflie address  
+        self.cf_uris        =   ['radio://0/80/2M/E7E7E7E701',
+                                 'radio://0/80/2M/E7E7E7E702']      # [-] crazyflie address  
         
-        self.cf_marker_ids  =   [[11, 12, 13, 14]]                  # [-] active marker IDs
+        self.cf_marker_ids  =   [[11, 12, 13, 14],
+                                 [21, 22, 23, 24]]                  # [-] active marker IDs
 
         # enable for experiment
         self.qtm_ip         =   '192.168.123.2'         # [-] ip setup
@@ -392,8 +394,8 @@ class OffboardMission(Node):
                 self.normvector             =   (self.vleader_next_wpt_ned-self.vleader_prev_wpt_ned)/self.norm
 
                 for axis in range(3):
-                    self.vleader_set_pt_ned[axis]   =   np.clip((1-self.omega)*self.vleader_prev_wpt_ned[axis] \
-                                                                +self.omega*self.vleader_next_wpt_ned[axis], \
+                    self.vleader_set_pt_ned[axis]   =   np.clip((1-self.omega_t)*self.vleader_prev_wpt_ned[axis] \
+                                                                +self.omega_t*self.vleader_next_wpt_ned[axis], \
                                                                 np.min(np.array([self.vleader_prev_wpt_ned[axis], self.vleader_next_wpt_ned[axis]])), \
                                                                 np.max(np.array([self.vleader_prev_wpt_ned[axis], self.vleader_next_wpt_ned[axis]])))    
 
@@ -413,7 +415,7 @@ class OffboardMission(Node):
 
                 for axis in range(3):
                     self.vleader_set_pt_ned[axis]   =   np.clip((1-self.omega_t)*self.vleader_prev_wpt_ned[axis] \
-                                                                +self.omega*self.vleader_next_wpt_ned[axis], \
+                                                                +self.omega_t*self.vleader_next_wpt_ned[axis], \
                                                                 np.min(np.array([self.vleader_prev_wpt_ned[axis], self.vleader_next_wpt_ned[axis]])), \
                                                                 np.max(np.array([self.vleader_prev_wpt_ned[axis], self.vleader_next_wpt_ned[axis]])))    
 
