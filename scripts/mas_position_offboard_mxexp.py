@@ -81,8 +81,11 @@ class OffboardMission(Node):
                                  [31, 32, 33, 34],
                                  [41, 42, 43, 44]]                  # [-] active marker IDs
         
-        self.n_px4          =   self.n_drone-len(self.cf_body_names)
-        self.n_qcf          =   len(self.cf_body_names)
+        self.cf_body_names  =   ['cf1']                             # [-] QTM (Qualysis track manager) rigid body name / ['cf1','cf2','cf3','cf4']
+
+        self.cf_uris        =   ['radio://0/80/2M/E7E7E7E701']      # [-] crazyflie address  
+        
+        self.cf_marker_ids  =   [[11, 12, 13, 14]]                  # [-] active marker IDs
 
         # enable for experiment
         # self.qtm_ip         =   '192.168.123.2'         # [-] ip setup
@@ -176,6 +179,9 @@ class OffboardMission(Node):
         if len(self.wpts_ned.shape) == 1:
             self.wpts_ned   =   np.reshape(self.wpts_ned, (1,self.wpts_ned.shape[0]))
 
+        # add experimental offset
+        self.wpts_ned[:,1]  =   self.wpts_ned[:,1]+0.5
+
         # parameters for formation flight
         self.wpt_idx                =   np.uint8(0)
         
@@ -216,14 +222,14 @@ class OffboardMission(Node):
         for i in range(self.n_drone):
             self.attack_vector.append(np.array([0,0,0], dtype=np.float64))
 
-        self.attack_vector[3]   =   0.4*(self.formation[0,:]-self.formation[3,:])
-        self.attack_vector[2]   =   1.4*self.formation[2,:]
+        self.attack_vector[3]   =   0.5*(self.formation[1,:]-self.formation[3,:])
+        self.attack_vector[2]   =   -0.5*self.formation[2,:]
 
         self.attack_start       =   np.float64(10.0)
-        self.attack_duration    =   np.float64(50.0)
+        self.attack_duration    =   np.float64(20.0)
         self.attack_timer       =   np.float64(0.0)
         self.attack_engage      =   np.float64(0.0)
-        self.attack_speed       =   np.float64(1/20)                    # [sec^(-1)] attack speed
+        self.attack_speed       =   np.float64(1/10)                    # [sec^(-1)] attack speed
 
     # subscriber callback
     def vehicle_status_callback(self,msg,id):
@@ -299,9 +305,9 @@ class OffboardMission(Node):
 
             # entry:
             if all(not agent_entry for agent_entry in self.entry_execute):
-                self.vleader_set_pt_ned     =   np.array([0.0,0.0,-0.75], dtype=np.float64)
-                self.vleader_prev_wpt_ned   =   np.array([0.0,0.0,0.0], dtype=np.float64)
-                self.vleader_next_wpt_ned   =   np.array([0.0,0.0,-0.75], dtype=np.float64)
+                self.vleader_set_pt_ned     =   np.array([0.0,0.0+0.5-0.5], dtype=np.float64)
+                self.vleader_prev_wpt_ned   =   np.array([0.0,0.0+0.5,0.0], dtype=np.float64)
+                self.vleader_next_wpt_ned   =   np.array([0.0,0.0+0.5,-0.5], dtype=np.float64)
 
             for idx in (idx for idx in range(self.n_drone) if self.entry_execute[idx] is False):
                 if idx < self.n_px4:    # px4
@@ -322,16 +328,16 @@ class OffboardMission(Node):
                     self.ned_spawn_offset[idx]      =   np.zeros((3,), dtype=np.float64)
 
                     if idx == 3:
-                        self.trajectory_set_pt[idx] =   np.array([-0.5,0.0,-0.75], dtype=np.float64)
+                        self.trajectory_set_pt[idx] =   np.array([0.5,0.5,-0.5], dtype=np.float64)
 
                     elif idx == 4:
-                        self.trajectory_set_pt[idx] =   np.array([0.5,0.0,-0.75], dtype=np.float64)
+                        self.trajectory_set_pt[idx] =   np.array([-0.5,0.5,-0.5], dtype=np.float64)
 
                     elif idx == 5:
-                        self.trajectory_set_pt[idx] =   np.array([-1.0,0.0,-0.75], dtype=np.float64)
+                        self.trajectory_set_pt[idx] =   np.array([-1.0,0.5,-0.5], dtype=np.float64)
 
                     elif idx == 6:
-                        self.trajectory_set_pt[idx] =   np.array([0.0,0.0,-0.75], dtype=np.float64)
+                        self.trajectory_set_pt[idx] =   np.array([0.0,0.0,-0.5], dtype=np.float64)
 
                     self.yaw_set_pt[idx]        =   self.yaw_set_pt[idx]
                     self.entry_execute[idx]     =   True
@@ -342,27 +348,29 @@ class OffboardMission(Node):
                     self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE,idx,1.0,6.0)
                     self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_COMPONENT_ARM_DISARM,idx,1.0)
                     self.arm_counter_list[idx]  +=  1
-                    self.get_logger().info('PX4 #'+str(idx+1)+' arming engaged ...')
+                    self.get_logger().info('px4 #'+str(idx+1)+' arming engaged ...')
 
             for idx in (idx for idx in range(self.n_px4) if self.entry_execute[idx] is True):
                 self.publish_offboard_control_mode(idx)
-                self.get_logger().info('PX4 #'+str(idx+1)+' takeoff(offboard) engaged ...')
+                self.get_logger().info('px4 #'+str(idx+1)+' takeoff(offboard) engaged ...')
 
             for idx in (idx for idx in range(self.n_drone) if self.entry_execute[idx] is True):
                 self.publish_trajectory_setpoint(idx)
 
             # enable for experiment
-            # if (all(qcf.is_safe() for qcf in self.qcfs)):
-            #     # cycle for crazyflies
-            #     for idx, qcf in enumerate(self.qcfs): 
-            #         qcf.safe_position_setpoint(Pose(self.trajectory_set_pt[idx+self.n_px4][1],self.trajectory_set_pt[idx+self.n_px4][0],-self.trajectory_set_pt[idx+self.n_px4][2]))
-            #         qcf.set_led_ring(7)
-            #         qcf.cf.param.set_value('ring.solidGreen', 200)
+            if (all(qcf.is_safe() for qcf in self.qcfs)):
+                # cycle for crazyflies
+                for idx, qcf in enumerate(self.qcfs): 
+                    qcf.safe_position_setpoint(Pose(self.trajectory_set_pt[idx+self.n_px4][1],self.trajectory_set_pt[idx+self.n_px4][0],-self.trajectory_set_pt[idx+self.n_px4][2]))
+                    qcf.set_led_ring(7)
+                    qcf.cf.param.set_value('ring.solidGreen', 200)
+                    self.get_logger().info('cf #'+str(idx+1)+' takeoff engaged ...')
 
-            # else:
-            #     # land
-            #     for idx, qcf in enumerate(self.qcfs):
-            #         qcf.land_in_place()
+            else:
+                # land
+                for idx, qcf in enumerate(self.qcfs):
+                    qcf.land_in_place()
+                    self.get_logger().info('cf #'+str(idx+1)+' cannot takeoff and land ...')
 
             # exit:
             if [True for idx in range(self.n_px4) if (self.local_pos_ned_list[idx] is not None)] == [True for idx in range(self.n_px4)] and \
@@ -415,8 +423,6 @@ class OffboardMission(Node):
                 self.trajectory_set_pt[idx]     =   self.trajectory_set_pt[idx]+self.omega_f*(self.formation[idx,:]-self.ned_spawn_offset[idx]) \
                                                     +self.look_ahead*self.normvector+self.attack_vector[idx]*self.attack_engage             # [m] Disable look-ahead
                 self.yaw_set_pt[idx]            =   self.yaw_set_pt[idx]
-                print('omegaf')
-                print(self.omega_f)
 
                 self.publish_trajectory_setpoint(idx)
 
@@ -428,17 +434,17 @@ class OffboardMission(Node):
                 self.publish_offboard_control_mode(idx)
 
             # enable for experiment
-            # if (all(qcf.is_safe() for qcf in self.qcfs)):
-            #     # cycle for crazyflies
-            #     for idx, qcf in enumerate(self.qcfs): 
-            #         qcf.safe_position_setpoint(Pose(self.trajectory_set_pt[idx+self.n_px4][1],self.trajectory_set_pt[idx+self.n_px4][0],-self.trajectory_set_pt[idx+self.n_px4][2]))
-            #         qcf.set_led_ring(7)
-            #         qcf.cf.param.set_value('ring.solidGreen', 200)
+            if (all(qcf.is_safe() for qcf in self.qcfs)):
+                # cycle for crazyflies
+                for idx, qcf in enumerate(self.qcfs): 
+                    qcf.safe_position_setpoint(Pose(self.trajectory_set_pt[idx+self.n_px4][1],self.trajectory_set_pt[idx+self.n_px4][0],-self.trajectory_set_pt[idx+self.n_px4][2]))
+                    qcf.set_led_ring(7)
+                    qcf.cf.param.set_value('ring.solidGreen', 200)
 
-            # else:
-            #     # land
-            #     for idx, qcf in enumerate(self.qcfs):
-            #         qcf.land_in_place()
+            else:
+                # land
+                for idx, qcf in enumerate(self.qcfs):
+                    qcf.land_in_place()
 
             # publish the information for fdir node
             if (self.wpt_idx == np.shape(self.wpts_ned)[0]-1) and (self.omega_t == 1.0) and (self.omega_f == 1.0):
@@ -454,16 +460,13 @@ class OffboardMission(Node):
             if (self.wpt_idx == np.shape(self.wpts_ned)[0]-1) and (self.omega_t == 1.0) and (self.omega_f == 1.0):
                 self.attack_timer      =   self.attack_timer+self.timer_period
 
-                print('check')
-                print(self.attack_timer)
-
                 if (self.attack_timer >= self.attack_start) and (self.attack_timer < self.attack_duration+self.attack_start):
                     self.attack_engage      =   np.clip(self.attack_engage+self.timer_period*self.attack_speed,0,1)
-                    # self.get_logger().info('Drones under the attack ...')
+                    self.get_logger().info('Drones under the attack ...')
 
                 else:
                     self.attack_engage      =   np.float64(0.0)
-                    # self.get_logger().info('Preparing for the attack ...')
+                    self.get_logger().info('Preparing for the attack ...')
 
             if (self.wpt_idx < np.shape(self.wpts_ned)[0]-1) and self.omega_t >= 1.0:
                 self.wpt_change_flag    =   True
@@ -481,9 +484,9 @@ class OffboardMission(Node):
                 self.entry_execute[idx]     =   True
 
             # enable for experiment
-            # for idx, qcf in enumerate(self.qcfs):
-            #     qcf.land_in_place()
-            #     self.entry_execute[idx+self.n_px4]  =   True
+            for idx, qcf in enumerate(self.qcfs):
+                qcf.land_in_place()
+                self.entry_execute[idx+self.n_px4]  =   True
 
         if self.wpt_change_flag:
 
@@ -523,7 +526,7 @@ def main():
                               [1.0*np.cos(np.pi/180*0),1.0*np.sin(np.pi/180*0),0.25],           # cf_1, attacked drone
                               [1.0*np.cos(np.pi/180*120),1.0*np.sin(np.pi/180*120),0.25],       # cf_2
                               [1.0*np.cos(np.pi/180*240),1.0*np.sin(np.pi/180*240),0.25],       # cf_3
-                              [0.0, 0.0, 0.1]], dtype=np.float64)                               # cf_4
+                              [0.0, 0.0, 0.35]], dtype=np.float64)                              # cf_4
 
     adjacency   =   np.array([[0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
                               [1.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0],
