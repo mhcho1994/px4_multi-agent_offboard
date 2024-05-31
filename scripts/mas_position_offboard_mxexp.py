@@ -337,7 +337,7 @@ class OffboardMission(Node):
                         self.trajectory_set_pt[idx] =   np.array([-1.0,0.5,-0.5], dtype=np.float64)
 
                     elif idx == 6:
-                        self.trajectory_set_pt[idx] =   np.array([0.0,0.0,-0.5], dtype=np.float64)
+                        self.trajectory_set_pt[idx] =   np.array([0.0,0.5,-0.5], dtype=np.float64)
 
                     self.yaw_set_pt[idx]        =   self.yaw_set_pt[idx]
                     self.entry_execute[idx]     =   True
@@ -386,7 +386,7 @@ class OffboardMission(Node):
             if all(not agent_entry for agent_entry in self.entry_execute):
                 self.vleader_prev_wpt_ned   =   np.copy(self.vleader_next_wpt_ned)
                 self.vleader_next_wpt_ned   =   np.copy(self.wpts_ned[self.wpt_idx])
-                self.omega                  =   np.float64(0.0)
+                self.omega_t                =   np.float64(0.0)
 
                 self.norm                   =   np.linalg.norm(self.vleader_next_wpt_ned-self.vleader_prev_wpt_ned)
                 self.normvector             =   (self.vleader_next_wpt_ned-self.vleader_prev_wpt_ned)/self.norm
@@ -420,7 +420,7 @@ class OffboardMission(Node):
             # entry/during:                
             for idx in range(self.n_drone):
                 self.trajectory_set_pt[idx]     =   np.copy(self.vleader_set_pt_ned)
-                self.trajectory_set_pt[idx]     =   self.trajectory_set_pt[idx]+self.omega_f*(self.formation[idx,:]-self.ned_spawn_offset[idx]) \
+                self.trajectory_set_pt[idx]     =   self.trajectory_set_pt[idx]+(self.formation[idx,:]-self.ned_spawn_offset[idx]) \
                                                     +self.look_ahead*self.normvector+self.attack_vector[idx]*self.attack_engage             # [m] Disable look-ahead
                 self.yaw_set_pt[idx]            =   self.yaw_set_pt[idx]
 
@@ -441,6 +441,7 @@ class OffboardMission(Node):
                     
                     if (idx == 0) and (self.attack_engage > 0):
                         qcf.set_led_ring(7)
+                        qcf.cf.param.set_value('ring.solidGreen', 0)
                         qcf.cf.param.set_value('ring.solidRed', 200)
                     else:
                         qcf.set_led_ring(7)
