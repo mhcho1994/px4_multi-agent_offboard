@@ -54,7 +54,7 @@ class OffboardMission(Node):
 
         for idx in range(self.n_drone):
 
-            self.ns             =   f'/px4_{idx+1}'
+            self.ns             =   f'px4_{idx+1}'
 
             self.array_subscribers[idx]['status_sub']           =   self.create_subscription(
                 VehicleStatus,
@@ -125,8 +125,6 @@ class OffboardMission(Node):
         self.wpts_ned       =   navpy.lla2ned(self.wpts_lla[:,0], self.wpts_lla[:,1], self.wpts_lla[:,2],
                                               self.ref_lla[0], self.ref_lla[1], self.ref_lla[2],
                                               latlon_unit='deg', alt_unit='m', model='wgs84')
-        
-        print(self.wpts_ned)
 
         # parameters for formation flight
         self.wpt_idx                =   np.uint8(0)
