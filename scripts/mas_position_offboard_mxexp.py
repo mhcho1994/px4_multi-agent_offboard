@@ -444,7 +444,10 @@ class OffboardMission(Node):
                     if (idx == 0) and (self.attack_engage > 0):
                         qcf.set_led_ring(7)
                         qcf.cf.param.set_value('ring.solidGreen', 0)
-                        qcf.cf.param.set_value('ring.solidRed', 200)
+                        if np.round(self.attack_timer)%2 == 1:
+                            qcf.cf.param.set_value('ring.solidRed', 200)
+                        else:
+                            qcf.cf.param.set_value('ring.solidRed', 50)
                     else:
                         qcf.set_led_ring(7)
                         qcf.cf.param.set_value('ring.solidGreen', 200)
