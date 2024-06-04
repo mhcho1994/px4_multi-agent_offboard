@@ -1,0 +1,27 @@
+# configuration information for mixed reality experiments w/ 10 agents
+# ['px4_1', 'px4_2', 'px4_3', 'px4_4', 'px4_5', 'px4_6', 'cf_1', 'cf_2', 'cf_3', 'cf_4']
+# [x500g_1, x500g_2, x500r_3, x500g_4, x500g_5, x500g_6, cf_1, cf_2, cf_3, cf_4]
+ros_ns_str: ['px4_1', 'px4_2', 'px4_3', 'px4_4', 'px4_5', 'px4_6', 'cf_1', 'cf_2', 'cf_3', 'cf_4']
+gz_model_names: [x500g_1, x500g_2, x500r_3, x500g_4, x500g_5, x500g_6, cf_1, cf_2, cf_3, cf_4]
+formation: 
+  [2.0*np.cos(np.pi/180*60),2.0*np.sin(np.pi/180*60),0.0,       # px4_1
+   2.0*np.cos(np.pi/180*180),2.0*np.sin(np.pi/180*180),0.0,     # px4_2
+   2.0*np.cos(np.pi/180*300),2.0*np.sin(np.pi/180*300),0.0,     # px4_3, attacked drone
+   2.0*np.cos(np.pi/180*0),2.0*np.sin(np.pi/180*0),-0.25,       # px4_4
+   2.0*np.cos(np.pi/180*120),2.0*np.sin(np.pi/180*120),-0.25,   # px4_5
+   2.0*np.cos(np.pi/180*240),2.0*np.sin(np.pi/180*240),-0.25,   # px4_6
+   1.0*np.cos(np.pi/180*0),1.0*np.sin(np.pi/180*0),0.0,         # cf_1, attacked drone
+   1.0*np.cos(np.pi/180*120),1.0*np.sin(np.pi/180*120),0.0,     # cf_2
+   1.0*np.cos(np.pi/180*240),1.0*np.sin(np.pi/180*240),0.0,     # cf_3
+   0.0, 0.0, 0.1]                                               # cf_4
+adjacency:
+  [0, 1, 1, 1, 1, 1, 1, 1, 1, 1,  # px4_1
+   1, 0, 1, 1, 1, 1, 1, 1, 1, 1,  # px4_2
+   1, 1, 0, 1, 1, 1, 1, 1, 1, 1,  # px4_3, attacked drone
+   1, 1, 1, 0, 1, 1, 1, 1, 1, 1,  # px4_4
+   1, 1, 1, 1, 0, 1, 1, 1, 1, 1,  # px4_5
+   1, 1, 1, 1, 1, 0, 1, 1, 1, 1,  # px4_6
+   1, 1, 1, 1, 1, 1, 0, 1, 1, 1,  # cf_1, attacked drone
+   1, 1, 1, 1, 1, 1, 1, 0, 1, 1,  # cf_2
+   1, 1, 1, 1, 1, 1, 1, 1, 0, 1,  # cf_3
+   1, 1, 1, 1, 1, 1, 1, 1, 1, 0]  # cf_4
