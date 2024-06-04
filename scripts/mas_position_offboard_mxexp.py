@@ -69,25 +69,25 @@ class OffboardMission(Node):
                 self.n_cf   += 1
 
         # set crazyflies body names, comm address, marker ids, ips, world and array publisher
-        # self.cf_body_names  =   ['cf1','cf2','cf3','cf4']           # [-] QTM (Qualysis track manager) rigid body name / ['cf1','cf2','cf3','cf4']
-
-        # self.cf_uris        =   ['radio://0/80/2M/E7E7E7E701',
-        #                          'radio://0/80/2M/E7E7E7E702',
-        #                          'radio://1/80/2M/E7E7E7E703',
-        #                          'radio://1/80/2M/E7E7E7E704']      # [-] crazyflie address  
-        
-        # self.cf_marker_ids  =   [[11, 12, 13, 14],
-        #                          [21, 22, 23, 24],
-        #                          [31, 32, 33, 34],
-        #                          [41, 42, 43, 44]]                  # [-] active marker IDs
-        
-        self.cf_body_names  =   ['cf1','cf2']                             # [-] QTM (Qualysis track manager) rigid body name / ['cf1','cf2','cf3','cf4']
+        self.cf_body_names  =   ['cf1','cf2','cf3','cf4']           # [-] QTM (Qualysis track manager) rigid body name / ['cf1','cf2','cf3','cf4']
 
         self.cf_uris        =   ['radio://0/80/2M/E7E7E7E701',
-                                 'radio://0/80/2M/E7E7E7E702']      # [-] crazyflie address  
+                                 'radio://0/80/2M/E7E7E7E702',
+                                 'radio://1/80/2M/E7E7E7E703',
+                                 'radio://1/80/2M/E7E7E7E704']      # [-] crazyflie address  
         
         self.cf_marker_ids  =   [[11, 12, 13, 14],
-                                 [21, 22, 23, 24]]                  # [-] active marker IDs
+                                 [21, 22, 23, 24],
+                                 [31, 32, 33, 34],
+                                 [41, 42, 43, 44]]                  # [-] active marker IDs
+        
+        # self.cf_body_names  =   ['cf1','cf2']                             # [-] QTM (Qualysis track manager) rigid body name / ['cf1','cf2','cf3','cf4']
+
+        # self.cf_uris        =   ['radio://0/80/2M/E7E7E7E701',
+        #                          'radio://0/80/2M/E7E7E7E702']      # [-] crazyflie address  
+        
+        # self.cf_marker_ids  =   [[11, 12, 13, 14],
+        #                          [21, 22, 23, 24]]                  # [-] active marker IDs
 
         # enable for experiment
         self.qtm_ip         =   '192.168.123.2'         # [-] ip setup
@@ -224,8 +224,9 @@ class OffboardMission(Node):
         for i in range(self.n_drone):
             self.attack_vector.append(np.array([0,0,0], dtype=np.float64))
 
-        self.attack_vector[2]   =   0.5*(self.formation[0,:]-self.formation[2,:])
-        self.attack_vector[3]   =   -0.5*self.formation[3,:]
+        self.attack_vector[2]       =   0.5*(self.formation[0,:]-self.formation[2,:])
+        self.attack_vector[2][2]    =   0.5
+        self.attack_vector[3]       =   -0.5*self.formation[3,:]
 
         self.attack_start       =   np.float64(10.0)
         self.attack_duration    =   np.float64(20.0)
@@ -441,12 +442,14 @@ class OffboardMission(Node):
                 for idx, qcf in enumerate(self.qcfs): 
                     qcf.safe_position_setpoint(Pose(self.trajectory_set_pt[idx+self.n_px4][1],self.trajectory_set_pt[idx+self.n_px4][0],-self.trajectory_set_pt[idx+self.n_px4][2]))
                     
-                    if (idx == 0) and (self.attack_engage > 0):
+                    if (idx == 0) and (self.attack_timer >= self.attack_start):
                         qcf.set_led_ring(7)
                         qcf.cf.param.set_value('ring.solidGreen', 0)
                         if np.round(self.attack_timer)%2 == 1:
+                            self.get_logger().info('Blinking ...'+str(np.round(self.attack_timer)%2))
                             qcf.cf.param.set_value('ring.solidRed', 200)
                         else:
+                            self.get_logger().info('Blinking ...'+str(np.round(self.attack_timer)%2))
                             qcf.cf.param.set_value('ring.solidRed', 50)
                     else:
                         qcf.set_led_ring(7)
@@ -458,7 +461,7 @@ class OffboardMission(Node):
                     qcf.land_in_place()
 
             # publish the information for fdir node
-            if (self.wpt_idx == np.shape(self.wpts_ned)[0]-1) and (self.omega_t == 1.0) and (self.omega_f == 1.0):
+            if (self.wpt_idx == np.shape(self.wpts_ned)[0]-1) and (self.omega_t == 1.0):
                 self.publish_virleader_pos()
                 self.publish_formation()
                 self.publish_spawn_offset()
@@ -468,12 +471,12 @@ class OffboardMission(Node):
                 # self.get_logger().info('Drones approaching the target position ...')
 
             # c2 link hijack attack engaging (for experiment):
-            if (self.wpt_idx == np.shape(self.wpts_ned)[0]-1) and (self.omega_t == 1.0) and (self.omega_f == 1.0):
+            if (self.wpt_idx == np.shape(self.wpts_ned)[0]-1) and (self.omega_t == 1.0):
                 self.attack_timer      =   self.attack_timer+self.timer_period
 
                 if (self.attack_timer >= self.attack_start) and (self.attack_timer < self.attack_duration+self.attack_start):
                     self.attack_engage      =   np.clip(self.attack_engage+self.timer_period*self.attack_speed,0,1)
-                    self.get_logger().info('Drones under the attack ...')
+                    self.get_logger().info('Drones under the attack ...'+str(self.attack_engage))
 
                 else:
                     self.attack_engage      =   np.float64(0.0)
@@ -529,15 +532,15 @@ def main():
 
     sitl_test   =   True
     ref_lla     =   np.array([24.484043629238872,54.36068616768677,0], dtype=np.float64)    # (lat,lon,alt) -> (deg,deg,m)
-    wpts        =   np.array([[24.484043629238872,54.36068616768677,0.75]], dtype=np.float64)
+    wpts        =   np.array([[24.484043629238872,54.36068616768677,0.5]], dtype=np.float64)
         
-    formation   =   np.array([[1.0*np.cos(np.pi/180*60),1.0*np.sin(np.pi/180*60),-0.25],        # px4_1
-                              [1.0*np.cos(np.pi/180*180),1.0*np.sin(np.pi/180*180),-0.25],      # px4_2
-                              [1.0*np.cos(np.pi/180*300),1.0*np.sin(np.pi/180*300),-0.25],      # px4_3, attacked drone
-                              [1.0*np.cos(np.pi/180*0),1.0*np.sin(np.pi/180*0),0.25],           # cf_1, attacked drone
-                              [1.0*np.cos(np.pi/180*120),1.0*np.sin(np.pi/180*120),0.25],       # cf_2
-                              [1.0*np.cos(np.pi/180*240),1.0*np.sin(np.pi/180*240),0.25],       # cf_3
-                              [0.0, 0.0, 0.35]], dtype=np.float64)                              # cf_4
+    formation   =   np.array([[2.0*np.cos(np.pi/180*60),2.0*np.sin(np.pi/180*60),0.0],        # px4_1
+                              [2.0*np.cos(np.pi/180*180),2.0*np.sin(np.pi/180*180),0.0],      # px4_2
+                              [2.0*np.cos(np.pi/180*300),2.0*np.sin(np.pi/180*300),0.0],      # px4_3, attacked drone
+                              [1.0*np.cos(np.pi/180*0),1.0*np.sin(np.pi/180*0),0.0],           # cf_1, attacked drone
+                              [1.0*np.cos(np.pi/180*120),1.0*np.sin(np.pi/180*120),0.0],       # cf_2
+                              [1.0*np.cos(np.pi/180*240),1.0*np.sin(np.pi/180*240),0.0],       # cf_3
+                              [0.0, 0.0, 0.1]], dtype=np.float64)                              # cf_4
 
     adjacency   =   np.array([[0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
                               [1.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0],
