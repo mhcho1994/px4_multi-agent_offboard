@@ -143,6 +143,14 @@ class OffboardMission(Node):
         # self.cf_marker_ids  =   [[11, 12, 13, 14],
         #                          [21, 22, 23, 24]]                  # [-] active marker IDs
 
+        # enable for experiment
+        self.qtm_ip         =   '192.168.123.2'         # [-] ip setup
+        self.world          =   World(expanse=3.0)      # [-] set up world - the world object comes with sane defaults
+        self.qcfs_          =   [QualisysCrazyflie(cf_body_name,cf_uri,self.world,marker_ids = cf_marker_id,qtm_ip = self.qtm_ip) \
+                                 for cf_body_name, cf_uri, cf_marker_id in zip(self.cf_body_names, self.cf_uris, self.cf_marker_ids)]    # [-] stack up context managers
+        self.qcfs           =   ParallelContexts(*self.qcfs_)
+        self.qcfs           =   self.qcfs.__enter__()
+
         # define subscribers and publishers 
         # px4: all
         # cf: trajectory_pub, spawn_offset_pub, no subscribers
