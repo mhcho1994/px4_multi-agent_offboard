@@ -19,7 +19,7 @@ import navpy
 
 # crazyflie packages
 # enable for experiment
-# from qfly import Pose, QualisysCrazyflie, World, utils, ParallelContexts
+from qfly import Pose, QualisysCrazyflie, World, utils, ParallelContexts
 
 # messages
 from px4_msgs.msg import OffboardControlMode, TrajectorySetpoint, VehicleStatus, VehicleLocalPosition, VehicleGlobalPosition, VehicleCommand
@@ -28,10 +28,10 @@ from std_msgs.msg import UInt8, Bool, Float32MultiArray
 
 class OffboardMission(Node):
 
-    def __init__(self,sitl_test,waypoints,formation_config,adjacency_matrix,ref_lla):
+    def __init__(self,debug,waypoints,formation_config,adjacency_matrix,ref_lla):
 
         # inheritance from parent class
-        super().__init__("mixed_real_offboard_mission")
+        super().__init__("mas_position_offboard_mxexp")
 
         # set publisher and subscriber quality of service profile
         qos_profile_pub     =   QoSProfile(
@@ -48,16 +48,13 @@ class OffboardMission(Node):
             depth           =   1
         )
 
-        # check the sitl test mode
-        # if sitl_test:
-        #     self.model_ns   =   ['px4_1','px4_2','px4_3','cf_1','cf_2','cf_3','cf_4']
-
-        # else:
-
-        # declare and get the namespace from the launch file
-        self.declare_parameter('ros_ns',rclpy.Parameter.Type.STRING_ARRAY)
-        self.model_ns       =   self.get_parameter('ros_ns').value
-        # print(self.model_ns)
+        # check debug mode
+        if debug:
+            self.model_ns   =   ['px4_1', 'px4_2', 'px4_3', 'px4_4', 'px4_5', 'px4_6', 'cf_1', 'cf_2', 'cf_3', 'cf_4']
+        else:
+            # declare and get the namespace from the launch file
+            self.declare_parameter('ros_ns',rclpy.Parameter.Type.STRING_ARRAY)
+            self.model_ns       =   self.get_parameter('ros_ns').value
 
         # define number of drones (both px4 and cf)
         self.n_drone        =   len(self.model_ns)
@@ -92,12 +89,12 @@ class OffboardMission(Node):
         #                          [21, 22, 23, 24]]                  # [-] active marker IDs
 
         # enable for experiment
-        # self.qtm_ip         =   '192.168.123.2'         # [-] ip setup
-        # self.world          =   World(expanse=3.0)      # [-] set up world - the world object comes with sane defaults
-        # self.qcfs_          =   [QualisysCrazyflie(cf_body_name,cf_uri,self.world,marker_ids = cf_marker_id,qtm_ip = self.qtm_ip) \
-        #                          for cf_body_name, cf_uri, cf_marker_id in zip(self.cf_body_names, self.cf_uris, self.cf_marker_ids)]    # [-] stack up context managers
-        # self.qcfs           =   ParallelContexts(*self.qcfs_)
-        # self.qcfs           =   self.qcfs.__enter__()
+        self.qtm_ip         =   '192.168.123.2'         # [-] ip setup
+        self.world          =   World(expanse=3.0)      # [-] set up world - the world object comes with sane defaults
+        self.qcfs_          =   [QualisysCrazyflie(cf_body_name,cf_uri,self.world,marker_ids = cf_marker_id,qtm_ip = self.qtm_ip) \
+                                 for cf_body_name, cf_uri, cf_marker_id in zip(self.cf_body_names, self.cf_uris, self.cf_marker_ids)]    # [-] stack up context managers
+        self.qcfs           =   ParallelContexts(*self.qcfs_)
+        self.qcfs           =   self.qcfs.__enter__()
 
         # define subscribers and publishers 
         # px4: all
@@ -169,15 +166,59 @@ class OffboardMission(Node):
         self.timer          =   self.create_timer(self.timer_period, self.cmdloop_callback)
 
         # get formation configuration and adjacency matrix of the vehicle network
-        # self.formation      =   formation_config
-        self.declare_parameter('formation',rclpy.Parameter.Type.DOUBLE_ARRAY)
-        self.formation      =   np.asarray(self.get_parameter('formation').value,dtype=np.float64)
-        self.formation      =   self.formation.reshape((self.n_drone,3))
+        if debug:
+            self.formation  =   [
+                                '2.0*np.cos(np.pi/180*60)','2.0*np.sin(np.pi/180*60)','0.0',     # px4_1
+                                '2.0*np.cos(np.pi/180*180)','2.0*np.sin(np.pi/180*180)','0.0',   # px4_2
+                                '2.0*np.cos(np.pi/180*300)','2.0*np.sin(np.pi/180*300)','0.0',   # px4_3, attacked drone
+                                '2.0*np.cos(np.pi/180*0)','2.0*np.sin(np.pi/180*0)','-0.25',     # px4_4
+                                '2.0*np.cos(np.pi/180*120)','2.0*np.sin(np.pi/180*120)','-0.25', # px4_5
+                                '2.0*np.cos(np.pi/180*240)','2.0*np.sin(np.pi/180*240)','-0.25', # px4_6
+                                '1.0*np.cos(np.pi/180*0)','1.0*np.sin(np.pi/180*0)','0.0',       # cf_1, attacked drone
+                                '1.0*np.cos(np.pi/180*120)','1.0*np.sin(np.pi/180*120)','0.0',   # cf_2
+                                '1.0*np.cos(np.pi/180*240)','1.0*np.sin(np.pi/180*240)','0.0',   # cf_3
+                                '0.0','0.0','0.1'                                                # cf_4 
+                                ]
+        else:
+            self.declare_parameter('formation',rclpy.Parameter.Type.STRING_ARRAY)
+            self.formation      =   self.get_parameter('formation').value
 
-        self.declare_parameter('adjacency',rclpy.Parameter.Type.DOUBLE_ARRAY)
-        self.adjacency      =   np.asarray(self.get_parameter('adjacency').value,dtype=np.float64)
-        self.adjacency      =   self.adjacency.reshape((self.n_drone,self.n_drone))
-        # self.adjacency      =   adjacency_matrix
+        for idx, x in enumerate(self.formation):
+            if isinstance(x, str):
+                self.formation[idx]	=   np.float64(eval(x))
+
+            elif isinstance(x, float) or isinstance(x, int):
+                self.formation[idx]    =   np.float64(self.formation[idx])
+
+        self.formation  =   np.asarray(self.formation)
+        self.formation  =   self.formation.reshape((self.n_drone,3))
+
+        if debug:
+            self.adjacency  =   [
+                                '0','1','1','1','1','1','1','1','1','1',  # px4_1
+                                '1','0','1','1','1','1','1','1','1','1',  # px4_2
+                                '1','1','0','1','1','1','1','1','1','1',  # px4_3, attacked drone
+                                '1','1','1','0','1','1','1','1','1','1',  # px4_4
+                                '1','1','1','1','0','1','1','1','1','1',  # px4_5
+                                '1','1','1','1','1','0','1','1','1','1',  # px4_6
+                                '1','1','1','1','1','1','0','1','1','1',  # cf_1, attacked drone
+                                '1','1','1','1','1','1','1','0','1','1',  # cf_2
+                                '1','1','1','1','1','1','1','1','0','1',  # cf_3
+                                '1','1','1','1','1','1','1','1','1','0'   # cf_4
+                                ]
+        else:
+            self.declare_parameter('adjacency',rclpy.Parameter.Type.STRING_ARRAY)
+            self.adjacency      =   self.get_parameter('adjacency').value
+
+        for idx, x in enumerate(self.adjacency):
+            if isinstance(x, str):
+                self.adjacency[idx]	=   np.float64(eval(x))
+
+            elif isinstance(x, float) or isinstance(x, int):
+                self.adjacency[idx]    =   np.float64(self.adjacency[idx])
+
+        self.adjacency  =   np.asarray(self.adjacency)
+        self.adjacency  =   self.adjacency.reshape((self.n_drone,self.n_drone))
 
         # set the reference as ned origin / convert global coordinates to local ones
         self.ref_lla        =   ref_lla
@@ -191,7 +232,8 @@ class OffboardMission(Node):
             self.wpts_ned   =   np.reshape(self.wpts_ned, (1,self.wpts_ned.shape[0]))
 
         # add experimental offset
-        self.wpts_ned[:,1]  =   self.wpts_ned[:,1]+0.5
+        self.experimental_offset    =   np.array([0.0,0.5,0.0],dtype=np.float64)
+        self.wpts_ned[:,1]          =   self.wpts_ned[:,1]+self.experimental_offset[1]
 
         # parameters for formation flight
         self.wpt_idx                =   np.uint8(0)
@@ -317,9 +359,9 @@ class OffboardMission(Node):
 
             # entry:
             if all(not agent_entry for agent_entry in self.entry_execute):
-                self.vleader_set_pt_ned     =   np.array([0.0,0.0+0.5,-0.5], dtype=np.float64)
-                self.vleader_prev_wpt_ned   =   np.array([0.0,0.0+0.5,0.0], dtype=np.float64)
-                self.vleader_next_wpt_ned   =   np.array([0.0,0.0+0.5,-0.5], dtype=np.float64)
+                self.vleader_set_pt_ned     =   np.array([0.0,0.0,-0.5], dtype=np.float64)+self.experimental_offset
+                self.vleader_prev_wpt_ned   =   np.array([0.0,0.0,0.0], dtype=np.float64)+self.experimental_offset
+                self.vleader_next_wpt_ned   =   np.array([0.0,0.0,-0.5], dtype=np.float64)+self.experimental_offset
 
             for idx in (idx for idx in range(self.n_drone) if self.entry_execute[idx] is False):
                 if idx < self.n_px4:    # px4
@@ -370,19 +412,19 @@ class OffboardMission(Node):
                 self.publish_trajectory_setpoint(idx)
 
             # enable for experiment
-            # if (all(qcf.is_safe() for qcf in self.qcfs)):
-            #     # cycle for crazyflies
-            #     for idx, qcf in enumerate(self.qcfs): 
-            #         qcf.safe_position_setpoint(Pose(self.trajectory_set_pt[idx+self.n_px4][1],self.trajectory_set_pt[idx+self.n_px4][0],-self.trajectory_set_pt[idx+self.n_px4][2]))
-            #         qcf.set_led_ring(7)
-            #         qcf.cf.param.set_value('ring.solidGreen', 200)
-            #         self.get_logger().info('cf #'+str(idx+1)+' takeoff engaged ...')
+            if (all(qcf.is_safe() for qcf in self.qcfs)):
+                # cycle for crazyflies
+                for idx, qcf in enumerate(self.qcfs): 
+                    qcf.safe_position_setpoint(Pose(self.trajectory_set_pt[idx+self.n_px4][1],self.trajectory_set_pt[idx+self.n_px4][0],-self.trajectory_set_pt[idx+self.n_px4][2]))
+                    qcf.set_led_ring(7)
+                    qcf.cf.param.set_value('ring.solidGreen', 200)
+                    # self.get_logger().info('cf #'+str(idx+1)+' takeoff engaged ...')
 
-            # else:
-            #     # land
-            #     for idx, qcf in enumerate(self.qcfs):
-            #         qcf.land_in_place()
-            #         self.get_logger().info('cf #'+str(idx+1)+' cannot takeoff and land ...')
+            else:
+                # land
+                for idx, qcf in enumerate(self.qcfs):
+                    qcf.land_in_place()
+                    # self.get_logger().info('cf #'+str(idx+1)+' cannot takeoff and land ...')
 
             # exit:
             if [True for idx in range(self.n_px4) if (self.local_pos_ned_list[idx] is not None)] == [True for idx in range(self.n_px4)] and \
@@ -446,28 +488,28 @@ class OffboardMission(Node):
                 self.publish_offboard_control_mode(idx)
 
             # enable for experiment
-            # if (all(qcf.is_safe() for qcf in self.qcfs)):
-            #     # cycle for crazyflies
-            #     for idx, qcf in enumerate(self.qcfs): 
-            #         qcf.safe_position_setpoint(Pose(self.trajectory_set_pt[idx+self.n_px4][1],self.trajectory_set_pt[idx+self.n_px4][0],-self.trajectory_set_pt[idx+self.n_px4][2]))
+            if (all(qcf.is_safe() for qcf in self.qcfs)):
+                # cycle for crazyflies
+                for idx, qcf in enumerate(self.qcfs): 
+                    qcf.safe_position_setpoint(Pose(self.trajectory_set_pt[idx+self.n_px4][1],self.trajectory_set_pt[idx+self.n_px4][0],-self.trajectory_set_pt[idx+self.n_px4][2]))
                     
-            #         if (idx == 0) and (self.attack_timer >= self.attack_start):
-            #             qcf.set_led_ring(7)
-            #             qcf.cf.param.set_value('ring.solidGreen', 0)
-            #             if np.round(self.attack_timer)%2 == 1:
-            #                 self.get_logger().info('Blinking ...'+str(np.round(self.attack_timer)%2))
-            #                 qcf.cf.param.set_value('ring.solidRed', 200)
-            #             else:
-            #                 self.get_logger().info('Blinking ...'+str(np.round(self.attack_timer)%2))
-            #                 qcf.cf.param.set_value('ring.solidRed', 50)
-            #         else:
-            #             qcf.set_led_ring(7)
-            #             qcf.cf.param.set_value('ring.solidGreen', 200)
+                    if (idx == 0) and (self.attack_timer >= self.attack_start):
+                        qcf.set_led_ring(7)
+                        qcf.cf.param.set_value('ring.solidGreen', 0)
+                        if np.round(self.attack_timer)%2 == 1:
+                            self.get_logger().info('Blinking ...'+str(np.round(self.attack_timer)%2))
+                            qcf.cf.param.set_value('ring.solidRed', 200)
+                        else:
+                            self.get_logger().info('Blinking ...'+str(np.round(self.attack_timer)%2))
+                            qcf.cf.param.set_value('ring.solidRed', 50)
+                    else:
+                        qcf.set_led_ring(7)
+                        qcf.cf.param.set_value('ring.solidGreen', 200)
 
-            # else:
-            #     # land
-            #     for idx, qcf in enumerate(self.qcfs):
-            #         qcf.land_in_place()
+            else:
+                # land
+                for idx, qcf in enumerate(self.qcfs):
+                    qcf.land_in_place()
 
             # publish the information for fdir node
             if (self.wpt_idx == np.shape(self.wpts_ned)[0]-1) and (self.omega_t == 1.0):
@@ -485,11 +527,11 @@ class OffboardMission(Node):
 
                 if (self.attack_timer >= self.attack_start) and (self.attack_timer < self.attack_duration+self.attack_start):
                     self.attack_engage      =   np.clip(self.attack_engage+self.timer_period*self.attack_speed,0,1)
-                    self.get_logger().info('Drones under the attack ...'+str(self.attack_engage))
+                    # self.get_logger().info('Drones under the attack ...'+str(self.attack_engage))
 
                 else:
                     self.attack_engage      =   np.float64(0.0)
-                    self.get_logger().info('Preparing for the attack ...')
+                    # self.get_logger().info('Preparing for the attack ...')
 
             if (self.wpt_idx < np.shape(self.wpts_ned)[0]-1) and self.omega_t >= 1.0:
                 self.wpt_change_flag    =   True
@@ -507,9 +549,9 @@ class OffboardMission(Node):
                 self.entry_execute[idx]     =   True
 
             # enable for experiment
-            # for idx, qcf in enumerate(self.qcfs):
-            #     qcf.land_in_place()
-            #     self.entry_execute[idx+self.n_px4]  =   True
+            for idx, qcf in enumerate(self.qcfs):
+                qcf.land_in_place()
+                self.entry_execute[idx+self.n_px4]  =   True
 
         if self.wpt_change_flag:
 
@@ -539,7 +581,7 @@ def main():
     # parser.add_argument('-n', type=int)
     # args = parser.parse_args()
 
-    sitl_test   =   True
+    debug       =   True
     ref_lla     =   np.array([24.484043629238872,54.36068616768677,0], dtype=np.float64)    # (lat,lon,alt) -> (deg,deg,m)
     wpts        =   np.array([[24.484043629238872,54.36068616768677,0.5]], dtype=np.float64)
         
@@ -561,7 +603,7 @@ def main():
 
     rclpy.init(args=None)
 
-    offboard_mission = OffboardMission(sitl_test,wpts,formation,adjacency,ref_lla)
+    offboard_mission = OffboardMission(debug,wpts,formation,adjacency,ref_lla)
 
     rclpy.spin(offboard_mission)
 
