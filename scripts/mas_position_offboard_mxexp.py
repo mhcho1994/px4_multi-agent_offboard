@@ -7,6 +7,7 @@ __contact__ = "@purdue.edu"
 import argparse
 import numpy as np
 from functools import partial
+from copy import deepcopy
 
 # ros packages
 import rclpy
@@ -83,7 +84,7 @@ class OffboardMission(Node):
                                 ]
         else:
             self.declare_parameter('formation',rclpy.Parameter.Type.STRING_ARRAY)
-            self.formation      =   self.get_parameter('formation').value
+            self.formation      =   deepcopy(self.get_parameter('formation').value)
 
         for idx, x in enumerate(self.formation):
             if isinstance(x, str):
@@ -111,7 +112,7 @@ class OffboardMission(Node):
                                 ]
         else:
             self.declare_parameter('adjacency',rclpy.Parameter.Type.STRING_ARRAY)
-            self.adjacency      =   self.get_parameter('adjacency').value
+            self.adjacency      =   deepcopy(self.get_parameter('adjacency').value)
 
         for idx, x in enumerate(self.adjacency):
             if isinstance(x, str):
