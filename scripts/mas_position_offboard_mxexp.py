@@ -381,16 +381,16 @@ class OffboardMission(Node):
                 else:                   # cf
                     self.ned_spawn_offset[idx]      =   np.zeros((3,), dtype=np.float64)
 
-                    if idx == 3:
+                    if idx == self.n_px4:
                         self.trajectory_set_pt[idx] =   np.array([0.5,0.5,-0.5], dtype=np.float64)
 
-                    elif idx == 4:
+                    elif idx == self.n_px4+1:
                         self.trajectory_set_pt[idx] =   np.array([-0.5,0.5,-0.5], dtype=np.float64)
 
-                    elif idx == 5:
+                    elif idx == self.n_px4+2:
                         self.trajectory_set_pt[idx] =   np.array([-1.0,0.5,-0.5], dtype=np.float64)
 
-                    elif idx == 6:
+                    elif idx == self.n_px4+3:
                         self.trajectory_set_pt[idx] =   np.array([0.0,0.5,-0.5], dtype=np.float64)
 
                     self.yaw_set_pt[idx]        =   self.yaw_set_pt[idx]
@@ -581,7 +581,7 @@ def main():
     # parser.add_argument('-n', type=int)
     # args = parser.parse_args()
 
-    debug       =   True
+    debug       =   False
     ref_lla     =   np.array([24.484043629238872,54.36068616768677,0], dtype=np.float64)    # (lat,lon,alt) -> (deg,deg,m)
     wpts        =   np.array([[24.484043629238872,54.36068616768677,0.5]], dtype=np.float64)
         
