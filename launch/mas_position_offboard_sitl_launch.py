@@ -46,23 +46,19 @@ def generate_launch_description():
 		'mixedexp_3d_10a.yaml'
 	)
 
-	print(config)
-
 	mas_offboard_position_ctrl_node = Node(
 		package='px4-multiagent-offboard',
 	    executable='mas_position_offboard_mxexp.py',
 	    name='mas_position_offboard_mxexp',
 		parameters = [
 			config
-			# {'ros_ns': ['px4_1', 'px4_2', 'px4_3', 'px4_4', 'px4_5', 'px4_6', 'cf_1', 'cf_2', 'cf_3', 'cf_4']}
 		])
 	
 	visualizer = Node(
 		package='px4-multiagent-offboard',
 	    executable='visualizer_real.py',
-	    name='visualizer_real',
-		parameters = [
-		])
+	    name='visualizer_real'
+		)
 
 	return LaunchDescription([
 		mas_offboard_position_ctrl_node,
