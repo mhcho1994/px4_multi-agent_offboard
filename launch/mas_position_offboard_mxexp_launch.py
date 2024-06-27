@@ -17,21 +17,21 @@ def generate_launch_description():
 	config = os.path.join(
 		get_package_share_directory('px4-multiagent-offboard'),
 		'config',
-		'sitl_3d_7a.yaml'
+		'mixedexp_3d_10a.yaml'
 	)
 
 	mas_offboard_position_ctrl_node = Node(
 		package='px4-multiagent-offboard',
-	    executable='mas_position_offboard_sitl.py',
-	    name='mas_position_offboard_sitl',
+	    executable='mas_position_offboard_mxexp.py',
+	    name='mas_position_offboard_mxexp',
 		parameters = [
 			config
 		])
 	
 	visualizer = Node(
 		package='px4-multiagent-offboard',
-	    executable='visualizer_sitl.py',
-	    name='visualizer_sitl'
+	    executable='visualizer_real.py',
+	    name='visualizer_real'
 		)
 
 	return LaunchDescription([

@@ -32,7 +32,7 @@
 #
 ############################################################################
 
-__author__ = "Kartik Anand Pant, Minhyun CHo"
+__author__ = "Kartik Anand Pant, Minhyun Cho"
 __contact__ = "kpant, mhcho@purdue.edu"
 
 from re import M
@@ -83,7 +83,7 @@ class DroneRelativePoseVisualizer(Node):
                 partial(self.global_position_callback,id=i),
                 qos_profile)
 
-        timer_period = 0.05  # seconds
+        timer_period = 0.005  # seconds
         self.timer = self.create_timer(timer_period, self.cmdloop_callback)
 
 

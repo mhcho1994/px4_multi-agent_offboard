@@ -34,12 +34,14 @@ include_directories(include)
 # install python executables
 install(PROGRAMS
   scripts/mas_position_offboard_mxexp.py
+  scripts/mas_position_offboard_sitl.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
 # install python executables
 install(PROGRAMS
   scripts/visualizer_real.py
+  scripts/visualizer_sitl.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

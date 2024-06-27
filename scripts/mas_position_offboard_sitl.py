@@ -27,7 +27,7 @@ class OffboardMission(Node):
     def __init__(self,n_drone,waypoints,formation_config,adjacency_matrix,ref_lla):
 
         # inheritance from parent class
-        super().__init__("px4_offboard_mission")
+        super().__init__("mas_position_offboard_sitl")
 
         # set publisher and subscriber quality of service profile
         qos_profile_pub     =   QoSProfile(
