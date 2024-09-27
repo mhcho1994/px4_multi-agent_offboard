@@ -1,6 +1,6 @@
-mas_position_offboard_mxexp:
+mas_position_offboard_mxsitl:
   ros__parameters:
-    agent_ns: ["px4_1", "px4_2", "px4_3", "px4_4", "px4_5", "px4_6", "cf_1", "cf_2", "cf_3", "cf_4"]
+    agent_ns: ["px4_1", "px4_2", "px4_3", "px4_4", "px4_5", "px4_6", "px4_7"]
     formation: [
     "2.0*np.cos(np.pi/180*60)","2.0*np.sin(np.pi/180*60)","0.0",
     "2.0*np.cos(np.pi/180*180)","2.0*np.sin(np.pi/180*180)","0.0",

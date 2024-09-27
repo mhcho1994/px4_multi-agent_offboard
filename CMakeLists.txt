@@ -34,6 +34,7 @@ include_directories(include)
 # install python executables
 install(PROGRAMS
   scripts/mas_position_offboard_mxexp.py
+  scripts/mas_position_offboard_mxsitl.py
   scripts/mas_position_offboard_sitl.py
   DESTINATION lib/${PROJECT_NAME}
 )

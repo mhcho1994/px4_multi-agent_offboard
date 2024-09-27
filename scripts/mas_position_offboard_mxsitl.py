@@ -32,7 +32,7 @@ class OffboardMission(Node):
     def __init__(self,debug,waypoints,formation_config,adjacency_matrix,ref_lla):
 
         # inheritance from parent class
-        super().__init__("mas_position_offboard_mxexp")
+        super().__init__("mas_position_offboard_mxsitl")
 
         # set publisher and subscriber quality of service profile
         qos_profile_pub     =   QoSProfile(
@@ -126,17 +126,17 @@ class OffboardMission(Node):
         self.get_logger().info(f'{self.adjacency}')
 
         # set crazyflies body names, comm address, marker ids, ips, world and array publisher
-        self.cf_body_names  =   ['cf1','cf2','cf3','cf4']           # [-] QTM (Qualysis track manager) rigid body name / ['cf1','cf2','cf3','cf4']
+        # self.cf_body_names  =   ['cf1','cf2','cf3','cf4']           # [-] QTM (Qualysis track manager) rigid body name / ['cf1','cf2','cf3','cf4']
 
-        self.cf_uris        =   ['radio://0/80/2M/E7E7E7E701',
-                                 'radio://0/80/2M/E7E7E7E702',
-                                 'radio://1/80/2M/E7E7E7E703',
-                                 'radio://1/80/2M/E7E7E7E704']      # [-] crazyflie address  
+        # self.cf_uris        =   ['radio://0/80/2M/E7E7E7E701',
+        #                          'radio://0/80/2M/E7E7E7E702',
+        #                          'radio://1/80/2M/E7E7E7E703',
+        #                          'radio://1/80/2M/E7E7E7E704']      # [-] crazyflie address  
         
-        self.cf_marker_ids  =   [[11, 12, 13, 14],
-                                 [21, 22, 23, 24],
-                                 [31, 32, 33, 34],
-                                 [41, 42, 43, 44]]                  # [-] active marker IDs
+        # self.cf_marker_ids  =   [[11, 12, 13, 14],
+        #                          [21, 22, 23, 24],
+        #                          [31, 32, 33, 34],
+        #                          [41, 42, 43, 44]]                  # [-] active marker IDs
         
         # self.cf_body_names  =   ['cf1','cf2']                             # [-] QTM (Qualysis track manager) rigid body name / ['cf1','cf2','cf3','cf4']
 
@@ -586,8 +586,14 @@ def main():
 
     debug       =   False
     ref_lla     =   np.array([24.484043629238872,54.36068616768677,0], dtype=np.float64)    # (lat,lon,alt) -> (deg,deg,m)
-    wpts        =   np.array([[24.484043629238872,54.36068616768677,0.5]], dtype=np.float64)
-        
+
+    wpts_ned    =   np.array([[0.0,0.0,0.5],
+                              [3,0.0,0.5],
+                              [3,3,0.5]],dtype=np.float64)
+    
+    wpts_temp   =   navpy.ned2lla(wpts_ned,ref_lla[0],ref_lla[1],ref_lla[2],latlon_unit='deg',alt_unit='m',model='wgs84')
+    wpts        =   np.concatenate((wpts_temp[0][:,np.newaxis],wpts_temp[1][:,np.newaxis],-wpts_temp[2][:,np.newaxis]),axis=1)
+
     formation   =   np.array([[2.0*np.cos(np.pi/180*60),2.0*np.sin(np.pi/180*60),0.0],        # px4_1
                               [2.0*np.cos(np.pi/180*180),2.0*np.sin(np.pi/180*180),0.0],      # px4_2
                               [2.0*np.cos(np.pi/180*300),2.0*np.sin(np.pi/180*300),0.0],      # px4_3, attacked drone
