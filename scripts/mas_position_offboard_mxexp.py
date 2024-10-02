@@ -484,7 +484,20 @@ class OffboardMission(Node):
 
                 if self.form_idx == 0:
                     for idx in range(self.n_drone):
-                        self.formation[idx,:]   =   (1-self.omega_f2)*self.ned_spawn_offset[idx]+self.omega_f2*self.formation_seq[idx,:,self.form_idx]
+                        if idx <= self.n_px4-1:
+                            self.formation[idx,:]   =   (1-self.omega_f2)*self.ned_spawn_offset[idx]+self.omega_f2*self.formation_seq[idx,:,self.form_idx]
+                        elif idx == self.n_px4:
+                            self.formation[idx,:]   =   (1-self.omega_f2)*(np.array([0.5,0.0,-0.5],dtype=np.float64)+self.experimental_offset)+self.omega_f2*self.formation_seq[idx,:,self.form_idx]
+
+                        elif idx == self.n_px4+1:
+                            self.formation[idx,:]   =   (1-self.omega_f2)*(np.array([-0.5,0.0,-0.5],dtype=np.float64)+self.experimental_offset)+self.omega_f2*self.formation_seq[idx,:,self.form_idx]
+
+                        elif idx == self.n_px4+2:
+                            self.formation[idx,:]   =   (1-self.omega_f2)*(np.array([-1.0,0.0,-0.5],dtype=np.float64)+self.experimental_offset)+self.omega_f2*self.formation_seq[idx,:,self.form_idx]
+
+                        elif idx == self.n_px4+3:
+                            self.formation[idx,:]   =   (1-self.omega_f2)*(np.array([0.0,0.0,-0.5],dtype=np.float64)+self.experimental_offset)+self.omega_f2*self.formation_seq[idx,:,self.form_idx]
+
                 else:
                     for idx in range(self.n_drone):
                         self.formation[idx,:]   =   (1-self.omega_f2)*self.formation_seq[idx,:,self.form_idx-1]+self.omega_f2*self.formation_seq[idx,:,self.form_idx]
