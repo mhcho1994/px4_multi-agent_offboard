@@ -11,7 +11,6 @@ import yaml
 from pathlib import Path
 import numpy as np
 
-
 def generate_launch_description():
 
 	config = os.path.join(
