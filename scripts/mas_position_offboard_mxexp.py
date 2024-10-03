@@ -421,14 +421,14 @@ class OffboardMission(Node):
                     qcf.safe_position_setpoint(Pose(self.trajectory_set_pt[idx+self.n_px4][1],self.trajectory_set_pt[idx+self.n_px4][0],-self.trajectory_set_pt[idx+self.n_px4][2]))
                     qcf.set_led_ring(7)
                     qcf.cf.param.set_value('ring.solidGreen', 200)
-                    self.get_logger().info('cf #'+str(idx+1)+' takeoff engaged ...')
+                    # self.get_logger().info('cf #'+str(idx+1)+' takeoff engaged ...')
                     time.sleep(0.3)
 
             else:
                 # land
                 for idx, qcf in enumerate(self.qcfs):
                     qcf.land_in_place()
-                    self.get_logger().info('cf #'+str(idx+1)+' cannot takeoff and land ...')
+                    # self.get_logger().info('cf #'+str(idx+1)+' cannot takeoff and land ...')
 
             # exit:
             if [True for idx in range(self.n_px4) if (self.local_pos_ned_list[idx] is not None)] == [True for idx in range(self.n_px4)] and \
@@ -490,16 +490,16 @@ class OffboardMission(Node):
                             self.formation[idx,:]   =   (1-self.omega_f2)*self.ned_spawn_offset[idx]+self.omega_f2*self.formation_seq[idx,:,self.form_idx]
 
                         elif idx == self.n_px4:
-                            self.formation[idx,:]   =   (1-self.omega_f2)*(np.array([0.5,0.0,-0.5],dtype=np.float64)+self.experimental_offset)+self.omega_f2*self.formation_seq[idx,:,self.form_idx]
+                            self.formation[idx,:]   =   (1-self.omega_f2)*(np.array([0.5,0.0,0.0],dtype=np.float64)+self.experimental_offset)+self.omega_f2*self.formation_seq[idx,:,self.form_idx]
 
                         elif idx == self.n_px4+1:
-                            self.formation[idx,:]   =   (1-self.omega_f2)*(np.array([-0.5,0.0,-0.5],dtype=np.float64)+self.experimental_offset)+self.omega_f2*self.formation_seq[idx,:,self.form_idx]
+                            self.formation[idx,:]   =   (1-self.omega_f2)*(np.array([-0.5,0.0,0.0],dtype=np.float64)+self.experimental_offset)+self.omega_f2*self.formation_seq[idx,:,self.form_idx]
 
                         elif idx == self.n_px4+2:
-                            self.formation[idx,:]   =   (1-self.omega_f2)*(np.array([-1.0,0.0,-0.5],dtype=np.float64)+self.experimental_offset)+self.omega_f2*self.formation_seq[idx,:,self.form_idx]
+                            self.formation[idx,:]   =   (1-self.omega_f2)*(np.array([-1.0,0.0,0.0],dtype=np.float64)+self.experimental_offset)+self.omega_f2*self.formation_seq[idx,:,self.form_idx]
 
                         elif idx == self.n_px4+3:
-                            self.formation[idx,:]   =   (1-self.omega_f2)*(np.array([0.0,0.0,-0.5],dtype=np.float64)+self.experimental_offset)+self.omega_f2*self.formation_seq[idx,:,self.form_idx]
+                            self.formation[idx,:]   =   (1-self.omega_f2)*(np.array([0.0,0.0,0.0],dtype=np.float64)+self.experimental_offset)+self.omega_f2*self.formation_seq[idx,:,self.form_idx]
 
                 else:
                     for idx in range(self.n_drone):
@@ -511,6 +511,12 @@ class OffboardMission(Node):
                 self.trajectory_set_pt[idx]     =   self.trajectory_set_pt[idx]+(self.formation[idx,:]-self.ned_spawn_offset[idx]) \
                                                     +self.look_ahead*self.normvector+self.attack_vector[idx]*self.attack_engage             # [m] Disable look-ahead
                 self.yaw_set_pt[idx]            =   self.yaw_set_pt[idx]
+
+                # if idx == 6:
+                #     self.get_logger().info('vleader set pt')
+                #     self.get_logger().info(f'{self.vleader_set_pt_ned}')
+                #     self.get_logger().info('7 traj set pt')
+                #     self.get_logger().info(f'{self.trajectory_set_pt[idx]}')
 
                 self.publish_trajectory_setpoint(idx)
 
