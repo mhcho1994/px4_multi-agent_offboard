@@ -266,11 +266,11 @@ class OffboardMission(Node):
         for i in range(self.n_drone):
             self.attack_vector.append(np.array([0,0,0], dtype=np.float64))
 
-        # self.attack_vector[2]               =   0.5*(self.formation[0,:]-self.formation[2,:])
-        # self.attack_vector[2][2]            =   0.5
-        # self.attack_vector[6]               =   -0.5*self.formation[6,:]
+        self.attack_vector[2]               =   0.5*(self.formation[0,:]-self.formation[2,:])
+        self.attack_vector[2][2]            =   0.5
+        self.attack_vector[6]               =   -0.5*self.formation[6,:]
 
-        self.attack_start       =   np.float64(10.0)
+        self.attack_start       =   np.float64(5.0)
         self.attack_duration    =   np.float64(20.0)
         self.attack_timer       =   np.float64(0.0)
         self.attack_engage      =   np.float64(0.0)
@@ -292,9 +292,10 @@ class OffboardMission(Node):
         for idx in range(self.n_cf):
             self.trajectory_set_pt[self.n_px4+idx]  =   self.formation_cf0[idx,:]+self.wpts_ned[0,:]
             self.yaw_set_pt[idx]                    =   self.yaw_set_pt[idx]
-            self.get_logger().info('cf #'+str(idx+1)+' setpt ...')
-            self.get_logger().info(f'{self.trajectory_set_pt[self.n_px4+idx]}')
+            # self.get_logger().info('cf #'+str(idx+1)+' setpt ...')
+            # self.get_logger().info(f'{self.trajectory_set_pt[self.n_px4+idx]}')
 
+        # enable for experiment
         if (all(qcf.is_safe() for qcf in self.qcfs)):
             # cycle for crazyflies
             for idx, qcf in enumerate(self.qcfs): 
@@ -461,8 +462,8 @@ class OffboardMission(Node):
 
             # during:
             else:
-                norm_delt       =   np.linalg.norm(self.vleader_next_wpt_ned-self.vleader_prev_wpt_ned)/self.velocity
-                form_delt       =   10.0
+                norm_delt       =   10 #np.linalg.norm(self.vleader_next_wpt_ned-self.vleader_prev_wpt_ned)/self.velocity
+                form_delt       =   7.5
                 fromtran_delt   =   2.5
 
                 self.omega_t    =   self.omega_t+self.timer_period/norm_delt
@@ -558,16 +559,16 @@ class OffboardMission(Node):
                 # self.get_logger().info('Drones approaching the target position ...')
 
             # c2 link hijack attack engaging (for experiment):
-            if (self.wpt_idx == np.shape(self.wpts_ned)[0]-1) and (self.omega_t == 1.0):
+            if self.wpt_idx >= 1:#(self.wpt_idx == np.shape(self.wpts_ned)[0]-1) and (self.omega_t == 1.0):
                 self.attack_timer      =   self.attack_timer+self.timer_period
 
                 if (self.attack_timer >= self.attack_start) and (self.attack_timer < self.attack_duration+self.attack_start):
                     self.attack_engage      =   np.clip(self.attack_engage+self.timer_period*self.attack_speed,0,1)
-                    # self.get_logger().info('Drones under the attack ...'+str(self.attack_engage))
+                    self.get_logger().info('Drones under the attack ...'+str(self.attack_engage))
 
                 else:
                     self.attack_engage      =   np.float64(0.0)
-                    # self.get_logger().info('Preparing for the attack ...')
+                    self.get_logger().info('Preparing for the attack ...')
 
             if (self.wpt_idx < np.shape(self.wpts_ned)[0]-1) and self.omega_t >= 1.0:
                 self.wpt_change_flag    =   True
@@ -585,9 +586,9 @@ class OffboardMission(Node):
                 self.entry_execute[idx]     =   True
 
             # enable for experiment
-            # for idx, qcf in enumerate(self.qcfs):
-            #     qcf.land_in_place()
-            #     self.entry_execute[idx+self.n_px4]  =   True
+            for idx, qcf in enumerate(self.qcfs):
+                qcf.land_in_place()
+                self.entry_execute[idx+self.n_px4]  =   True
 
         if self.wpt_change_flag:
 
@@ -620,7 +621,7 @@ def main():
     debug       =   False
     ref_lla     =   np.array([24.484043629238872,54.36068616768677,0], dtype=np.float64)    # (lat,lon,alt) -> (deg,deg,m)
 
-    wpts_ned    =   np.array([[0.0,0.0,-0.5],[0.0,1.0,-0.5],[0.0,-1.0,-0.5],[0.0,0.0,-0.5]],dtype=np.float64)
+    wpts_ned    =   np.array([[0.0,0.0,-0.5],[0.0,1.0,-0.5],[0.0,0.0,-0.5]],dtype=np.float64)
     wpts_temp   =   navpy.ned2lla(wpts_ned,ref_lla[0],ref_lla[1],ref_lla[2],latlon_unit='deg',alt_unit='m',model='wgs84')
 
     if wpts_ned.shape[0] >= 2:
