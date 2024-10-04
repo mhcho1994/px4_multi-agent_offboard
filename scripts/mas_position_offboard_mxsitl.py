@@ -130,7 +130,7 @@ class OffboardMission(Node):
         # common: vleader_pos_pub, formation_pub, adjacency_pub
         self.array_publishers     =   [{'offboard_mode_pub':None, 'trajectory_pub':None, 'vehicle_command_pub':None, 'spawn_offset_pub':None} for _ in range(self.n_drone)]
         self.array_subscribers    =   [{'status_sub':None, 'local_pos_sub':None, 'global_pos_sub':None} for _ in range(self.n_px4)]
-        self.element_publisher    =   [{'vleader_pos_pub':None, 'formation_pub':None, 'adjacency_pub':None}]
+        self.element_publisher    =   [{'vleader_pos_pub':None, 'formation_pub':None, 'adjacency_pub':None, 'form_change_pub':None}]
 
         for idx in range(self.n_drone):
 
@@ -189,6 +189,11 @@ class OffboardMission(Node):
             '/px4_0/detector/adjacency',
             qos_profile_pub)
 
+        self.element_publisher[0]['form_change_pub']        =    self.create_publisher(
+            Bool,
+            '/px4_0/detector/form_change',
+            qos_profile_pub)
+
         # set the reference as ned origin / convert global coordinates to local ones
         self.ref_lla        =   ref_lla
         self.wpt_idx        =   0
@@ -215,6 +220,7 @@ class OffboardMission(Node):
 
         self.form_idx               =   np.uint8(0)
         self.formation              =   np.zeros((self.n_drone,3),dtype=np.float64)
+        self.formation_msg          =   np.zeros((self.n_drone,3),dtype=np.float64)
 
         # variables for virtual leader
         self.vleader_set_pt_ned     =   np.array([0.0,0.0,0.0],dtype=np.float64)
@@ -231,6 +237,9 @@ class OffboardMission(Node):
         self.omega_t            =   np.float64(0.0)                 # [-] trajectory interpolation timer
         self.omega_f1           =   np.float64(0.0)                 # [-] formation change timer
         self.omega_f2           =   np.float64(0.0)                 # [-] formation change interpolation timer
+        self.omega_f3           =   np.float64(0.0)
+
+        self.formation_change   =   False
 
         self.arm_counter_list       =   [0 for i in range(self.n_drone)]
         self.local_pos_ned_list     =   [None for _ in range(self.n_drone)]
@@ -248,9 +257,14 @@ class OffboardMission(Node):
         for i in range(self.n_drone):
             self.attack_vector.append(np.array([0,0,0], dtype=np.float64))
 
-        # self.attack_vector[2]               =   0.5*(self.formation[0,:,0]-self.formation[2,:,0])
-        # self.attack_vector[2][2]            =   0.5
-        # self.attack_vector[6]               =   -0.5*self.formation[6,:,0]
+        self.attack_vector[2][0]            =   1.5 #0.5*(self.formation[0,:]-self.formation[2,:])
+        self.attack_vector[2][1]            =   1.0
+        self.attack_vector[2][2]            =   -2.5
+        # self.attack_vector[6][0]            =   -1.0
+        # self.attack_vector[6][1]            =   -2.0
+        # self.attack_vector[6][2]            =   -1.0
+        
+        #-0.5*self.formation[6,:]
 
         self.attack_start       =   np.float64(10.0)
         self.attack_duration    =   np.float64(20.0)
@@ -316,6 +330,11 @@ class OffboardMission(Node):
         msg                     =   Float32MultiArray()
         msg.data                =   (self.formation-self.ned_spawn_offset).flatten().tolist()
         self.element_publisher[0]['formation_pub'].publish(msg)
+
+    def publish_form_change(self):
+        msg                     =   Bool()
+        msg.data                =   self.formation_change
+        self.element_publisher[0]['form_change_pub'].publish(msg)
 
     def publish_adjacency(self):
         msg                     =   Float32MultiArray()
@@ -420,8 +439,9 @@ class OffboardMission(Node):
             # during:
             else:
                 norm_delt       =   np.linalg.norm(self.vleader_next_wpt_ned-self.vleader_prev_wpt_ned)/self.velocity
-                form_delt       =   10.0
-                fromtran_delt   =   2.5
+                form_delt       =   20.0
+                transition_delt =   2.5
+                changemsg_delt  =   4.5
 
                 self.omega_t    =   self.omega_t+self.timer_period/norm_delt
                 self.omega_t    =   np.clip(self.omega_t,0,1)
@@ -430,12 +450,21 @@ class OffboardMission(Node):
                     self.form_idx   +=  1
                     self.omega_f1   =   0
                     self.omega_f2   =   0
+                    self.omega_f3   =   0
                     
                 self.omega_f1   =   self.omega_f1+self.timer_period/form_delt
                 self.omega_f1   =   np.clip(self.omega_f1,0,1)
                 
-                self.omega_f2   =   self.omega_f2+self.timer_period/fromtran_delt
+                self.omega_f2   =   self.omega_f2+self.timer_period/transition_delt
                 self.omega_f2   =   np.clip(self.omega_f2,0,1)
+
+                self.omega_f3   =   self.omega_f3+self.timer_period/changemsg_delt
+                self.omega_f3   =   np.clip(self.omega_f3,0,1)
+
+                if (self.omega_f3 >= 0) and (self.omega_f3 < 1):
+                    self.formation_change   =   True
+                else:
+                    self.formation_change   =   False
 
                 self.norm                   =   np.linalg.norm(self.vleader_next_wpt_ned-self.vleader_prev_wpt_ned)
                 self.normvector             =   (self.vleader_next_wpt_ned-self.vleader_prev_wpt_ned)/self.norm
@@ -448,10 +477,14 @@ class OffboardMission(Node):
 
                 if self.form_idx == 0:
                     for idx in range(self.n_drone):
-                        self.formation[idx,:]   =   (1-self.omega_f2)*self.ned_spawn_offset[idx]+self.omega_f2*self.formation_seq[idx,:,self.form_idx]
+                        self.formation[idx,:]           =   (1-self.omega_f2)*self.ned_spawn_offset[idx]+self.omega_f2*self.formation_seq[idx,:,self.form_idx]
+                        # self.formation_msg[idx,:]       =   (1-self.omega_f3)*self.ned_spawn_offset[idx]+self.omega_f3*self.formation_seq[idx,:,self.form_idx]
+
                 else:
                     for idx in range(self.n_drone):
-                        self.formation[idx,:]   =   (1-self.omega_f2)*self.formation_seq[idx,:,self.form_idx-1]+self.omega_f2*self.formation_seq[idx,:,self.form_idx]
+                        self.formation[idx,:]           =   (1-self.omega_f2)*self.formation_seq[idx,:,self.form_idx-1]+self.omega_f2*self.formation_seq[idx,:,self.form_idx]
+                        # self.formation_msg[idx,:]       =   (1-self.omega_f3)*self.formation_seq[idx,:,self.form_idx-1]+self.omega_f3*self.formation_seq[idx,:,self.form_idx]
+
 
             # entry/during:                
             for idx in range(self.n_drone):
@@ -477,6 +510,7 @@ class OffboardMission(Node):
                 self.publish_spawn_offset()
             self.publish_formation()
             self.publish_adjacency()
+            self.publish_form_change()
                 
             # else:
                 # self.get_logger().info('Drones approaching the target position ...')
@@ -487,11 +521,11 @@ class OffboardMission(Node):
 
                 if (self.attack_timer >= self.attack_start) and (self.attack_timer < self.attack_duration+self.attack_start):
                     self.attack_engage      =   np.clip(self.attack_engage+self.timer_period*self.attack_speed,0,1)
-                    # self.get_logger().info('Drones under the attack ...'+str(self.attack_engage))
+                    self.get_logger().info('Drones under the attack ...'+str(self.attack_engage))
 
                 else:
                     self.attack_engage      =   np.float64(0.0)
-                    # self.get_logger().info('Preparing for the attack ...')
+                    self.get_logger().info('Preparing for the attack ...')
 
             if (self.wpt_idx < np.shape(self.wpts_ned)[0]-1) and self.omega_t >= 1.0:
                 self.wpt_change_flag    =   True
@@ -541,7 +575,8 @@ def main():
     debug       =   False
     ref_lla     =   np.array([24.484043629238872,54.36068616768677,0], dtype=np.float64)    # (lat,lon,alt) -> (deg,deg,m)
 
-    wpts_ned    =   np.array([[0.0,0.0,0.5],[0.0,1.0,0.5],[0.0,-1.0,0.5],[0.0,0.0,0.5]],dtype=np.float64)
+    # wpts_ned    =   np.array([[0.0,0.0,0.5],[0.0,1.0,0.5],[0.0,-1.0,0.5],[0.0,0.0,0.5]],dtype=np.float64)
+    wpts_ned    =   np.array([[0.0,0.0,0.5]],dtype=np.float64)
     wpts_temp   =   navpy.ned2lla(wpts_ned,ref_lla[0],ref_lla[1],ref_lla[2],latlon_unit='deg',alt_unit='m',model='wgs84')
 
     if wpts_ned.shape[0] >= 2:
