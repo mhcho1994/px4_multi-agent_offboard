@@ -266,9 +266,9 @@ class OffboardMission(Node):
         for i in range(self.n_drone):
             self.attack_vector.append(np.array([0,0,0], dtype=np.float64))
 
-        self.attack_vector[2]               =   0.5*(self.formation[0,:]-self.formation[2,:])
-        self.attack_vector[2][2]            =   0.5
-        self.attack_vector[6]               =   -0.5*self.formation[6,:]
+        # self.attack_vector[2]               =   0.5*(self.formation[0,:]-self.formation[2,:])
+        # self.attack_vector[2][2]            =   0.25
+        # self.attack_vector[6]               =   -0.5*self.formation[6,:]
 
         self.attack_start       =   np.float64(5.0)
         self.attack_duration    =   np.float64(20.0)
@@ -303,7 +303,7 @@ class OffboardMission(Node):
                 qcf.set_led_ring(7)
                 qcf.cf.param.set_value('ring.solidGreen', 200)
                 # self.get_logger().info('cf #'+str(idx+1)+' takeoff engaged ...')
-                time.sleep(0.3)
+                time.sleep(0.05)
 
         else:
             # land
@@ -428,12 +428,24 @@ class OffboardMission(Node):
                 self.publish_trajectory_setpoint(idx)
 
             # enable for experiment
-            if not (all(qcf.is_safe() for qcf in self.qcfs)):
+            if (all(qcf.is_safe() for qcf in self.qcfs)):
+                # cycle for crazyflies
+                for idx, qcf in enumerate(self.qcfs): 
+                    qcf.safe_position_setpoint(Pose(self.trajectory_set_pt[idx+self.n_px4][1],self.trajectory_set_pt[idx+self.n_px4][0],-self.trajectory_set_pt[idx+self.n_px4][2]))
+                    # self.get_logger().info('cf #'+str(idx+1)+' takeoff engaged ...')
 
-                # land when some cfs are not safe
+            else:
+                # land
                 for idx, qcf in enumerate(self.qcfs):
                     qcf.land_in_place()
-                    # self.get_logger().info('cf #'+str(idx+1)+' land engaged (not safe) ...')
+                    # self.get_logger().info('cf #'+str(idx+1)+' cannot takeoff and land ...')
+
+            for idx in range(self.n_cf):
+                if idx == 0: ################ here check~~~
+                    # self.get_logger().info('vleader set pt')
+                    # self.get_logger().info(f'{self.vleader_set_pt_ned}')
+                    self.get_logger().info('7 traj set pt')
+                    self.get_logger().info(f'{self.trajectory_set_pt[idx+self.n_px4]}')
 
             # exit:
             if [True for idx in range(self.n_px4) if (self.local_pos_ned_list[idx] is not None)] == [True for idx in range(self.n_px4)] and \
@@ -491,7 +503,7 @@ class OffboardMission(Node):
 
                 if self.form_idx == 0:
                     for idx in range(self.n_drone):
-                        if idx <= self.n_px4-1:
+                        if idx < self.n_px4:
                             self.formation[idx,:]   =   (1-self.omega_f2)*self.ned_spawn_offset[idx]+self.omega_f2*self.formation_seq[idx,:,self.form_idx]
 
                         else:
@@ -508,11 +520,11 @@ class OffboardMission(Node):
                                                     +self.look_ahead*self.normvector+self.attack_vector[idx]*self.attack_engage             # [m] Disable look-ahead
                 self.yaw_set_pt[idx]            =   self.yaw_set_pt[idx]
 
-                # if idx == 6: ################ here check~~~
-                #     self.get_logger().info('vleader set pt')
-                #     self.get_logger().info(f'{self.vleader_set_pt_ned}')
-                #     self.get_logger().info('7 traj set pt')
-                #     self.get_logger().info(f'{self.trajectory_set_pt[idx]}')
+                if idx == 6: ################ here check~~~
+                    # self.get_logger().info('vleader set pt')
+                    # self.get_logger().info(f'{self.vleader_set_pt_ned}')
+                    self.get_logger().info('7 traj set pt')
+                    self.get_logger().info(f'{self.trajectory_set_pt[idx]}')
 
                 self.publish_trajectory_setpoint(idx)
 
@@ -549,7 +561,7 @@ class OffboardMission(Node):
                     qcf.land_in_place()
 
             # publish the information for fdir node
-            if (self.wpt_idx <= np.shape(self.wpts_ned)[0]-1): # and (self.omega_t == 1.0):
+            if self.wpt_idx < np.shape(self.wpts_ned)[0]: # and (self.omega_t == 1.0):
                 self.publish_virleader_pos()
                 self.publish_spawn_offset()
             self.publish_formation()
@@ -621,7 +633,7 @@ def main():
     debug       =   False
     ref_lla     =   np.array([24.484043629238872,54.36068616768677,0], dtype=np.float64)    # (lat,lon,alt) -> (deg,deg,m)
 
-    wpts_ned    =   np.array([[0.0,0.0,-0.5],[0.0,1.0,-0.5],[0.0,0.0,-0.5]],dtype=np.float64)
+    wpts_ned    =   np.array([[0.0,0.0,-0.5],[1.0,0.0,-0.5],[0.0,0.0,-0.5]],dtype=np.float64)
     wpts_temp   =   navpy.ned2lla(wpts_ned,ref_lla[0],ref_lla[1],ref_lla[2],latlon_unit='deg',alt_unit='m',model='wgs84')
 
     if wpts_ned.shape[0] >= 2:
