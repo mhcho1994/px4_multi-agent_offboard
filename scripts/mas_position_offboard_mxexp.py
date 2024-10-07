@@ -266,15 +266,15 @@ class OffboardMission(Node):
         for i in range(self.n_drone):
             self.attack_vector.append(np.array([0,0,0], dtype=np.float64))
 
-        # self.attack_vector[2]               =   0.5*(self.formation[0,:]-self.formation[2,:])
-        # self.attack_vector[2][2]            =   0.25
-        # self.attack_vector[6]               =   -0.5*self.formation[6,:]
+        self.attack_vector[2]               =   0.5*(self.formation_seq[0,:,-1]-self.formation_seq[2,:,-1])
+        self.attack_vector[2][2]            =   0.25
+        self.attack_vector[6]               =   -0.5*self.formation_seq[6,:,-1]
 
-        self.attack_start       =   np.float64(5.0)
-        self.attack_duration    =   np.float64(20.0)
+        self.attack_start       =   np.float64(15.0)
+        self.attack_duration    =   np.float64(30.0)
         self.attack_timer       =   np.float64(0.0)
         self.attack_engage      =   np.float64(0.0)
-        self.attack_speed       =   np.float64(1/10)                    # [sec^(-1)] attack speed
+        self.attack_speed       =   np.float64(1/5)                    # [sec^(-1)] attack speed
 
         # enable for experiment
         self.qtm_ip         =   '192.168.123.2'         # [-] ip setup
@@ -571,16 +571,16 @@ class OffboardMission(Node):
                 # self.get_logger().info('Drones approaching the target position ...')
 
             # c2 link hijack attack engaging (for experiment):
-            if self.wpt_idx >= 1:#(self.wpt_idx == np.shape(self.wpts_ned)[0]-1) and (self.omega_t == 1.0):
-                self.attack_timer      =   self.attack_timer+self.timer_period
+            # if self.wpt_idx >= 1:#(self.wpt_idx == np.shape(self.wpts_ned)[0]-1) and (self.omega_t == 1.0):
+            self.attack_timer      =   self.attack_timer+self.timer_period
 
-                if (self.attack_timer >= self.attack_start) and (self.attack_timer < self.attack_duration+self.attack_start):
-                    self.attack_engage      =   np.clip(self.attack_engage+self.timer_period*self.attack_speed,0,1)
-                    self.get_logger().info('Drones under the attack ...'+str(self.attack_engage))
+            if (self.attack_timer >= self.attack_start) and (self.attack_timer < self.attack_duration+self.attack_start):
+                self.attack_engage      =   np.clip(self.attack_engage+self.timer_period*self.attack_speed,0,1)
+                self.get_logger().info('Drones under the attack ...'+str(self.attack_engage))
 
-                else:
-                    self.attack_engage      =   np.float64(0.0)
-                    self.get_logger().info('Preparing for the attack ...')
+            else:
+                self.attack_engage      =   np.float64(0.0)
+                self.get_logger().info('Preparing for the attack ...')
 
             if (self.wpt_idx < np.shape(self.wpts_ned)[0]-1) and self.omega_t >= 1.0:
                 self.wpt_change_flag    =   True
